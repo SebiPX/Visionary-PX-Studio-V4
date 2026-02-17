@@ -99,6 +99,18 @@ await saveStory({
 });
 ```
 
+#### ✏️ Sketch Studio
+```typescript
+// Saves sketch and generated image
+await saveSketch({
+  sketch_data: sketchBase64,
+  generated_image_url: generatedUrl,
+  context: "HUMAN",
+  style: "CINEMATIC",
+  edit_history: []
+});
+```
+
 ### 🏠 Dashboard Integration
 - ✅ **Unified View** - All content types in one masonry grid
 - ✅ **Click Navigation** - Cards navigate to respective tools with loaded content
@@ -169,6 +181,20 @@ Text generations
 - platform (text)
 - content (text)
 - config (jsonb)
+- created_at (timestamp)
+```
+
+#### `generated_sketches`
+Sketch-to-image generations
+```sql
+- id (uuid)
+- user_id (uuid)
+- sketch_data (text) - Base64 encoded sketch
+- generated_image_url (text) - Generated image URL
+- context (text) - Subject context (Human, Animal, etc.)
+- style (text) - Artistic style (Cinematic, Photorealistic, etc.)
+- edit_history (jsonb) - Array of edit instructions
+- metadata (jsonb) - Additional generation metadata
 - created_at (timestamp)
 ```
 

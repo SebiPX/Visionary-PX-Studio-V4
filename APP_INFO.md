@@ -60,7 +60,22 @@ Vollständiger Story-to-Video Workflow mit KI-Unterstützung.
     - Vollständige Story-Persistenz
     - Export-Funktionen
 
-### 7. 💬 Chat Bot
+### 7. ✏️ Sketch Studio
+Verwandeln Sie einfache Skizzen in fotorealistische Bilder mit KI.
+*   **Workflow:** Zeichnen → Generieren → Verfeinern
+*   **Features:**
+    - Interaktives Canvas mit Stift/Radierer-Tools
+    - Undo/Redo-Funktionalität
+    - Context-Auswahl (Human, Animal, Object, Landscape, Architecture)
+    - Stil-Optionen (Cinematic, Photorealistic, Artistic, Sketch, Cartoon)
+    - Aspect Ratio Auswahl (1:1, 16:9, 9:16)
+    - Bild-Editing mit Textanweisungen
+    - Fullscreen-Preview mit Download
+*   **Modell:** `gemini-2.5-flash-image` für optimale Sketch-to-Image Transformation
+*   **Persistenz:** Sketches und generierte Bilder werden in Supabase gespeichert
+*   **History:** Sidebar mit allen generierten Sketches, Ein-Klick-Wiederherstellung
+
+### 8. 💬 Chat Bot
 Ein vielseitiger KI-Assistent mit verschiedenen Persönlichkeiten.
 *   **Personas:**
     *   *Creative Partner:* Für Brainstorming und Art Direction.
@@ -69,7 +84,7 @@ Ein vielseitiger KI-Assistent mit verschiedenen Persönlichkeiten.
     *   *Visionary AI:* Allgemeiner Assistent.
 *   **Funktion:** Behält den Kontext innerhalb der Sitzung bei.
 
-### 8. ⚙️ Benutzereinstellungen
+### 9. ⚙️ Benutzereinstellungen
 *   **Profil:** Ändern Sie Ihren Namen und E-Mail.
 *   **Avatar:** Wählen Sie aus futuristischen Presets oder laden Sie ein eigenes Bild hoch (Supabase Storage).
 *   **Passwort:** Sicheres Passwort-Reset-System mit E-Mail-Verifizierung.

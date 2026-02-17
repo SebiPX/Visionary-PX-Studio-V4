@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
-import { GeneratedImage, GeneratedVideo, GeneratedThumbnail } from '../lib/database.types';
+import { GeneratedImage, GeneratedVideo, GeneratedThumbnail, GeneratedSketch } from '../lib/database.types';
 import { AppView } from '../types';
 
 type ContentItem = {
     id: string;
-    type: 'IMAGE' | 'VIDEO' | 'THUMBNAIL';
+    type: 'IMAGE' | 'VIDEO' | 'THUMBNAIL' | 'SKETCH';
     url: string;
     title?: string;
     timestamp: string;
@@ -27,11 +27,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView, navigateToItem })
     }, []);
 
     const loadAllHistory = async () => {
-        // Load all three types of content in parallel
-        const [imagesResult, videosResult, thumbnailsResult] = await Promise.all([
+        // Load all four types of content in parallel
+        const [imagesResult, videosResult, thumbnailsResult, sketchesResult] = await Promise.all([
             loadHistory('image', 20),
             loadHistory('video', 20),
             loadHistory('thumbnail', 20),
+            loadHistory('sketch', 20),
         ]);
 
         // Combine and format all content
@@ -71,6 +72,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView, navigateToItem })
                 timestamp: formatTimestamp(thumb.created_at),
             }));
             allContent.push(...thumbnails);
+        }
+
+        // Add sketches
+        if (sketchesResult.success && sketchesResult.data) {
+            const sketches = (sketchesResult.data as GeneratedSketch[]).map(sketch => ({
+                id: sketch.id,
+                type: 'SKETCH' as const,
+                url: sketch.generated_image_url, // Use generated image (always exists after generation)
+                title: `${sketch.context} - ${sketch.style}`,
+                timestamp: formatTimestamp(sketch.created_at),
+            }));
+            allContent.push(...sketches);
         }
 
         // Sort by timestamp (newest first)
@@ -167,7 +180,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView, navigateToItem })
                             const viewMap = {
                                 'IMAGE': AppView.IMAGE_GEN,
                                 'VIDEO': AppView.VIDEO_STUDIO,
-                                'THUMBNAIL': AppView.THUMBNAIL_ENGINE
+                                'THUMBNAIL': AppView.THUMBNAIL_ENGINE,
+                                'SKETCH': AppView.SKETCH_STUDIO
                             };
 
                             // Use navigateToItem if available, otherwise fall back to setView

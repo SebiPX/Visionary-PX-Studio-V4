@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { GeneratedImage, GeneratedVideo, GeneratedThumbnail, ChatSession, GeneratedText } from '../lib/database.types';
+import { GeneratedImage, GeneratedVideo, GeneratedThumbnail, ChatSession, GeneratedText, GeneratedSketch } from '../lib/database.types';
 
-type ContentType = 'image' | 'video' | 'thumbnail' | 'text';
+type ContentType = 'image' | 'video' | 'thumbnail' | 'text' | 'sketch';
 
 interface SaveImageData {
     prompt: string;
@@ -39,6 +39,14 @@ interface SaveTextData {
     audience?: string;
     tone?: string;
     config?: Record<string, any>;
+}
+
+interface SaveSketchData {
+    sketch_data: string;
+    generated_image_url: string;
+    context: string;
+    style: string;
+    edit_history?: any[];
 }
 
 export const useGeneratedContent = () => {
@@ -234,7 +242,9 @@ export const useGeneratedContent = () => {
                     ? 'generated_videos'
                     : type === 'thumbnail'
                         ? 'generated_thumbnails'
-                        : 'generated_texts';
+                        : type === 'sketch'
+                            ? 'generated_sketches'
+                            : 'generated_texts';
 
             const { data, error: fetchError } = await supabase
                 .from(tableName)
@@ -266,7 +276,9 @@ export const useGeneratedContent = () => {
                     ? 'generated_videos'
                     : type === 'thumbnail'
                         ? 'generated_thumbnails'
-                        : 'generated_texts';
+                        : type === 'sketch'
+                            ? 'generated_sketches'
+                            : 'generated_texts';
 
             const { error: deleteError } = await supabase
                 .from(tableName)
@@ -283,6 +295,57 @@ export const useGeneratedContent = () => {
         }
     };
 
+    // Save generated sketch
+    const saveSketch = async (data: SaveSketchData) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('User not authenticated');
+
+            const { error: insertError } = await supabase
+                .from('generated_sketches')
+                .insert({
+                    user_id: user.id,
+                    sketch_data: data.sketch_data,
+                    generated_image_url: data.generated_image_url,
+                    context: data.context,
+                    style: data.style,
+                    edit_history: data.edit_history || [],
+                });
+
+            if (insertError) throw insertError;
+            return { success: true };
+        } catch (err: any) {
+            setError(err.message);
+            return { success: false, error: err.message };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Load sketch history
+    const loadSketchHistory = async (limit: number = 20): Promise<GeneratedSketch[]> => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('User not authenticated');
+
+            const { data, error } = await supabase
+                .from('generated_sketches')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(limit);
+
+            if (error) throw error;
+            return data || [];
+        } catch (err: any) {
+            console.error('Error loading sketch history:', err);
+            return [];
+        }
+    };
+
     return {
         loading,
         error,
@@ -291,8 +354,10 @@ export const useGeneratedContent = () => {
         saveThumbnail,
         saveText,
         saveChat,
+        saveSketch,
         loadChatSessions,
         loadHistory,
+        loadSketchHistory,
         deleteContent,
     };
 };

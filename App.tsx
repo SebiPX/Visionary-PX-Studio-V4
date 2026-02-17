@@ -9,6 +9,7 @@ import { VideoStudio } from './components/VideoStudio';
 import { TextEngine } from './components/TextEngine';
 import { ThumbnailEngine } from './components/ThumbnailEngine';
 import { StoryStudio } from './components/StoryStudio';
+import { SketchStudio } from './components/SketchStudio/SketchStudio';
 import { ChatBot } from './components/ChatBot';
 import { Settings } from './components/Settings';
 
@@ -81,6 +82,10 @@ const AppContent: React.FC = () => {
 
         <div className={`w-full h-full ${currentView === AppView.STORY_STUDIO ? 'block' : 'hidden'}`}>
           <StoryStudio />
+        </div>
+
+        <div className={`w-full h-full ${currentView === AppView.SKETCH_STUDIO ? 'block' : 'hidden'}`}>
+          <SketchStudio />
         </div>
 
         <div className={`w-full h-full ${currentView === AppView.CHAT_BOT ? 'block' : 'hidden'}`}>

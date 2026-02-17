@@ -86,6 +86,14 @@ Visionary PX Studio vereint Google's leistungsstärkste KI-Modelle (Gemini & Veo
 - Shot-by-Shot Bilder
 - Regenerierungs-Optionen
 
+### ✏️ **Sketch Studio**
+- Sketch-to-Image Transformation
+- Interaktives Drawing Canvas
+- Context & Style Auswahl
+- Aspect Ratio Kontrolle (1:1, 16:9, 9:16)
+- Bild-Editing mit Textanweisungen
+- History mit Wiederherstellung
+
 ### 💬 **Chat Bot**
 - 4 Personas (Creative, Tech, Marketing, General)
 - Kontext-Awareness
@@ -119,6 +127,7 @@ Alle Generierungen werden in Supabase PostgreSQL gespeichert:
 - `generated_videos` - Videogenerierungen
 - `generated_thumbnails` - Thumbnails
 - `generated_texts` - Texte
+- `generated_sketches` - Sketch-to-Image Generierungen
 - `stories` - Story Studio Projekte
 
 ---

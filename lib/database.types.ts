@@ -154,6 +154,18 @@ export interface GeneratedText {
     updated_at: string;
 }
 
+export interface GeneratedSketch {
+    id: string;
+    user_id: string;
+    sketch_data: string;
+    generated_image_url: string | null;
+    context: string;
+    style: string;
+    edit_history: any[];
+    created_at: string;
+    updated_at: string;
+}
+
 // Database table names
 export type Tables =
     | 'profiles'
@@ -161,4 +173,6 @@ export type Tables =
     | 'storyboard_sessions'
     | 'generated_images'
     | 'generated_videos'
-    | 'generated_thumbnails';
+    | 'generated_thumbnails'
+    | 'generated_sketches';
+
