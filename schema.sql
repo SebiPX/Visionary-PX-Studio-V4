@@ -211,3 +211,54 @@ CREATE POLICY "Users can delete their own generated videos"
     ON public.generated_videos FOR DELETE
     USING (auth.uid() = user_id);
 
+
+-- 4. Generated Sketches (Sketch Studio - Added 16.02.2026)
+CREATE TABLE public.generated_sketches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    sketch_data TEXT NOT NULL,
+    generated_image_url TEXT,
+    context TEXT NOT NULL,
+    style TEXT NOT NULL,
+    edit_history JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_generated_sketches_user_id ON public.generated_sketches(user_id);
+CREATE INDEX IF NOT EXISTS idx_generated_sketches_created_at ON public.generated_sketches(created_at DESC);
+
+-- Enable Row Level Security
+ALTER TABLE public.generated_sketches ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can view own sketches"
+    ON public.generated_sketches FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create own sketches"
+    ON public.generated_sketches FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own sketches"
+    ON public.generated_sketches FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own sketches"
+    ON public.generated_sketches FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Create updated_at trigger for sketches
+CREATE OR REPLACE FUNCTION public.update_generated_sketches_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_generated_sketches_updated_at
+    BEFORE UPDATE ON public.generated_sketches
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_generated_sketches_updated_at();
