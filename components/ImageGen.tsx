@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { supabase } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedImage } from '../lib/database.types';
 
@@ -92,21 +92,7 @@ export const ImageGen: React.FC<ImageGenProps> = ({ selectedItemId, onItemLoaded
     }, [selectedItemId, history]);
 
     const handleGenerate = async () => {
-        if (!process.env.API_KEY) {
-            alert("API Key missing");
-            return;
-        }
-        if (!prompt) return;
-        if (activeMode !== 'TEXT' && !uploadedImage) {
-            alert("Please upload an image for this mode.");
-            return;
-        }
-
-        setIsGenerating(true);
-
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
             // Prepare contents
             const parts: any[] = [];
 
@@ -125,15 +111,23 @@ export const ImageGen: React.FC<ImageGenProps> = ({ selectedItemId, onItemLoaded
             parts.push({ text: prompt });
 
             // Using gemini-2.5-flash-image for standard generations
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: { parts: parts },
-                config: {
-                    imageConfig: {
-                        aspectRatio: aspectRatio,
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.5-flash-image',
+                    contents: { parts: parts },
+                    config: {
+                        imageConfig: {
+                            aspectRatio: aspectRatio,
+                        }
                     }
                 }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             // Parse response to find image part
             const respParts = response.candidates?.[0]?.content?.parts;

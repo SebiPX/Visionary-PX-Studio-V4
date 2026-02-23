@@ -1,27 +1,31 @@
-import { GoogleGenAI } from "@google/genai";
+import { supabase } from '../lib/supabaseClient';
 import { ContextOption, StyleOption } from "../components/SketchStudio/types";
 
 const GEMINI_MODEL = 'gemini-2.5-flash-image';
-
-// Lazy initialization to avoid API key errors on import
-let ai: GoogleGenAI | null = null;
-
-const getAI = () => {
-    if (!ai) {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (!apiKey) {
-            throw new Error('VITE_GEMINI_API_KEY is not set in environment variables');
-        }
-        ai = new GoogleGenAI({ apiKey });
-    }
-    return ai;
-};
 
 /**
  * Helper to strip the data:image/...;base64, prefix
  */
 const cleanBase64 = (base64Data: string) => {
     return base64Data.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
+};
+
+const invokeProxy = async (payload: any) => {
+    const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+        body: payload
+    });
+    
+    if (error) {
+        console.error("Supabase Function Error:", error);
+        throw new Error(`Proxy Error: ${error.message}`);
+    }
+    
+    if (data?.error) {
+        console.error("Gemini API Error via Proxy:", data.error);
+        throw new Error(`API Error: ${data.error}`);
+    }
+    
+    return data;
 };
 
 /**
@@ -51,20 +55,19 @@ export const generateImageFromSketch = async (
       Output the image only.
     `;
 
-        const response = await getAI().models.generateContent({
+        const response = await invokeProxy({
+            action: 'generateContent',
             model: GEMINI_MODEL,
             contents: {
                 parts: [
-                    {
-                        text: prompt.trim(),
-                    },
+                    { text: prompt.trim() },
                     {
                         inlineData: {
                             mimeType: 'image/png',
                             data: cleanBase64(sketchBase64),
-                        },
-                    },
-                ],
+                        }
+                    }
+                ]
             },
             config: {
                 imageConfig: {
@@ -95,21 +98,20 @@ export const editGeneratedImage = async (
       Ensure the result is cinematic and high quality.
     `;
 
-        const response = await getAI().models.generateContent({
+        const response = await invokeProxy({
+            action: 'generateContent',
             model: GEMINI_MODEL,
             contents: {
                 parts: [
-                    {
-                        text: prompt.trim(),
-                    },
+                    { text: prompt.trim() },
                     {
                         inlineData: {
                             mimeType: 'image/png',
                             data: cleanBase64(imageBase64),
-                        },
-                    },
-                ],
-            },
+                        }
+                    }
+                ]
+            }
         });
 
         return extractImageFromResponse(response);
@@ -120,7 +122,7 @@ export const editGeneratedImage = async (
 };
 
 const extractImageFromResponse = (response: any): string => {
-    // The SDK types might be complex, so we check safely
+    // Check safely 
     const parts = response.candidates?.[0]?.content?.parts;
 
     if (!parts || !Array.isArray(parts)) {

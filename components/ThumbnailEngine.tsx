@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { supabase } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedThumbnail } from '../lib/database.types';
 import { BackgroundTool } from './ThumbnailEngine/components/BackgroundTool';
@@ -138,11 +138,19 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
 
         setIsGeneratingIdea(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `Write a very short, catchy, 2-3 word thumbnail text overlay for a video about: "${videoTopic}". RETURN ONLY THE TEXT. No quotes.`,
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-3-flash-preview',
+                    contents: `Write a very short, catchy, 2-3 word thumbnail text overlay for a video about: "${videoTopic}". RETURN ONLY THE TEXT. No quotes.`
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
+
             if (response.text) {
                 setTextContent(response.text.trim());
             }
@@ -161,15 +169,22 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
 
         setIsGeneratingIdea(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const promptText = type === 'BACKGROUND'
                 ? `Describe a visually striking background for a youtube thumbnail about: "${videoTopic}". Keep it concise, visual, and descriptive (no text description).`
                 : `Describe a main subject/character/element for a youtube thumbnail about: "${videoTopic}". Keep it concise (no text description).`;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: promptText,
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-3-flash-preview',
+                    contents: promptText
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
             if (response.text) {
                 if (type === 'BACKGROUND') setBgPrompt(response.text.trim());
                 else setElementPrompt(response.text.trim());
@@ -191,7 +206,6 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
         setGeneratedImage(null);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
             // Construct a composite prompt
             let finalPrompt = `Create a high-quality, professional YouTube thumbnail. Aspect Ratio ${aspectRatio}.`;
@@ -231,13 +245,21 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
             // Add text prompt last
             parts.push({ text: finalPrompt });
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: { parts: parts },
-                config: {
-                    imageConfig: { aspectRatio: aspectRatio }
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.5-flash-image',
+                    contents: { parts: parts },
+                    config: {
+                        imageConfig: { aspectRatio: aspectRatio }
+                    }
                 }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             const respParts = response.candidates?.[0]?.content?.parts;
             if (respParts) {

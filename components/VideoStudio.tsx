@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { supabase } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedVideo } from '../lib/database.types';
 
@@ -144,40 +144,44 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
         setIsPlaying(false);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-            let operation;
-
-            if (activeMode === 'IMAGE' && uploadedImage) {
-                const base64Data = uploadedImage.split(',')[1];
-                operation = await ai.models.generateVideos({
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateVideos',
                     model: 'veo-3.1-fast-generate-preview',
                     prompt: `${prompt} (Camera Motion: ${cameraMotion})`,
-                    image: {
-                        imageBytes: base64Data,
+                    image: (activeMode === 'IMAGE' && uploadedImage) ? {
+                        imageBytes: uploadedImage.split(',')[1],
                         mimeType: 'image/png'
-                    },
+                    } : undefined,
                     config: {
                         numberOfVideos: 1,
-                        resolution: '720p',
+                        resolution: (activeMode === 'IMAGE' && uploadedImage) ? '720p' : '1080p',
                         aspectRatio: aspectRatio
                     }
-                });
-            } else {
-                operation = await ai.models.generateVideos({
-                    model: 'veo-3.1-fast-generate-preview',
-                    prompt: `${prompt} (Camera Motion: ${cameraMotion})`,
-                    config: {
-                        numberOfVideos: 1,
-                        resolution: '1080p',
-                        aspectRatio: aspectRatio
-                    }
-                });
+                }
+            });
+
+            if (error || response?.error) {
+                throw new Error(response?.error || error?.message);
             }
+
+            let operation = response;
 
             while (!operation.done) {
                 await new Promise(resolve => setTimeout(resolve, 5000));
-                operation = await ai.operations.getVideosOperation({ operation: operation });
+
+                const { data: opResponse, error: opError } = await supabase.functions.invoke('gemini-proxy', {
+                    body: {
+                        action: 'getVideosOperation',
+                        operation: operation
+                    }
+                });
+
+                if (opError || opResponse?.error) {
+                    throw new Error(opResponse?.error || opError?.message);
+                }
+
+                operation = opResponse;
             }
 
             const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;

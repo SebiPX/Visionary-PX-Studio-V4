@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { supabase } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedText } from '../lib/database.types';
 
@@ -54,14 +54,8 @@ export const TextEngine: React.FC = () => {
     };
 
     const generateContent = async (isContinuation = false) => {
-        if (!process.env.API_KEY) {
-            alert("API Key missing");
-            return;
-        }
-
         setIsGenerating(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
             let prompt = "";
             if (isContinuation) {
@@ -88,11 +82,19 @@ export const TextEngine: React.FC = () => {
                 }];
             }
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-pro-preview',
-                contents: prompt,
-                config: config
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-3-pro-preview',
+                    contents: prompt,
+                    config: config
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             if (response.text) {
                 let finalContent = isContinuation ? content + "\n\n" + response.text : response.text;
@@ -113,17 +115,11 @@ export const TextEngine: React.FC = () => {
     };
 
     const generateAll = async () => {
-        if (!process.env.API_KEY) {
-            alert("API Key missing");
-            return;
-        }
-
         setIsGeneratingAll(true);
         const platforms = ['Blog Post', 'Facebook', 'Instagram', 'LinkedIn'];
         const results: Record<string, string> = {};
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
             for (const platform of platforms) {
                 const platformInstructions: Record<string, string> = {
@@ -146,11 +142,19 @@ export const TextEngine: React.FC = () => {
                     }];
                 }
 
-                const response = await ai.models.generateContent({
-                    model: 'gemini-3-pro-preview',
-                    contents: prompt,
-                    config: config
+                const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                    body: {
+                        action: 'generateContent',
+                        model: 'gemini-3-pro-preview',
+                        contents: prompt,
+                        config: config
+                    }
                 });
+
+                if (error || response?.error) {
+                    console.error("Gemini API Error:", error || response?.error);
+                    throw new Error(response?.error || error?.message);
+                }
 
                 if (response.text) {
                     results[platform] = response.text;
@@ -372,8 +376,8 @@ export const TextEngine: React.FC = () => {
                                     }
                                 }}
                                 className={`p-2 rounded-lg transition-all ${copied
-                                        ? 'bg-green-500/20 text-green-500'
-                                        : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
+                                    ? 'bg-green-500/20 text-green-500'
+                                    : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
                                     }`}
                                 title={copied ? 'Copied!' : 'Copy'}
                             >

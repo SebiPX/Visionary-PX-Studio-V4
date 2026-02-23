@@ -26,7 +26,7 @@ config({ path: path.join(__dirname, '../.env.local') });
 // ── Config ─────────────────────────────────────────────────────────────────
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY  = process.env.VITE_SUPABASE_ANON_KEY;   // Service role key is better for seeding
-const GEMINI_KEY    = process.env.VITE_GEMINI_API_KEY;
+const GEMINI_KEY    = process.env.GEMINI_API_KEY;
 const EMBED_MODEL   = 'gemini-embedding-001';               // 768-dim, available on this key
 const DOCX_PATH     = path.join(__dirname, '../.temp/Need To Know_Stand Februar 2026.docx');
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { supabase } from '../lib/supabaseClient';
 import { StoryAsset, StoryShot } from '../lib/database.types';
 
 interface StoryParams {
@@ -24,31 +24,18 @@ export const useStoryAI = () => {
         setError(null);
 
         try {
-            const apiKey = process.env.API_KEY;
-            if (!apiKey) throw new Error('API Key missing');
-
-            const ai = new GoogleGenAI({ apiKey });
-
-            // Build context from assets
-            const actorDescriptions = params.actors
-                .filter(a => a.description)
-                .map((a) => `${a.name}: ${a.description}`)
-                .join(', ');
-
-            const prompt = `Create a compelling ${params.genre || 'commercial'} story for a storyboard with the following elements:
-
-Actors: ${actorDescriptions || 'Not specified'}
-Environment: ${params.environment?.description || params.environment?.name || 'Not specified'}
-Product: ${params.product?.description || params.product?.name || 'Not specified'}
-Mood: ${params.mood || 'engaging'}
-Target Audience: ${params.targetAudience || 'general audience'}
-
-Write a concise story (3-5 paragraphs) that would work well for a commercial or short video. Focus on visual storytelling and include specific actions and scenes.`;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ text: prompt }] }
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.0-flash',
+                    contents: { parts: [{ text: prompt }] }
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             const generatedStory = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
             return generatedStory;
@@ -67,70 +54,18 @@ Write a concise story (3-5 paragraphs) that would work well for a commercial or 
         setError(null);
 
         try {
-            const apiKey = process.env.API_KEY;
-            if (!apiKey) throw new Error('API Key missing');
-
-            const ai = new GoogleGenAI({ apiKey });
-
-            // Build comprehensive context
-            const actorList = params.actors
-                .filter(a => a.description || a.name)
-                .map(a => `- ${a.name}${a.description ? ': ' + a.description : ''}`)
-                .join('\n');
-
-            const prompt = `You are a professional storyboard artist. Create a detailed shot list for a ${params.genre || 'commercial'} video based on this information:
-
-STORY:
-${params.storyText || 'Create a compelling visual narrative'}
-
-ASSETS:
-Actors:
-${actorList || '- Not specified'}
-
-Environment: ${params.environment?.description || params.environment?.name || 'Not specified'}
-Product: ${params.product?.description || params.product?.name || 'Not specified'}
-
-PARAMETERS:
-- Mood: ${params.mood || 'engaging'}
-- Target Audience: ${params.targetAudience || 'general audience'}
-- Duration: 30-60 seconds
-
-Create 5-8 shots that tell this story visually. For each shot, provide:
-1. Scene number
-2. Title (brief, descriptive)
-3. Description (what happens in the shot, 2-3 sentences)
-4. Location (specific place in the environment)
-5. Framing (choose from: extreme-close-up, close-up, medium-shot, full-shot, wide-shot)
-6. Camera angle (choose from: eye-level, high-angle, low-angle, birds-eye, dutch-angle)
-7. Camera movement (choose from: static, pan, tilt, dolly, tracking, crane, handheld)
-8. Lighting (choose from: natural, studio, dramatic, soft, backlit)
-9. Duration (in seconds, 3-10s per shot)
-10. Movement notes (actor/object movements)
-11. Audio notes (dialogue, sound effects, music cues)
-
-Format your response as a JSON array of shot objects. Example:
-[
-  {
-    "scene_number": "1",
-    "title": "Opening Establishing Shot",
-    "description": "Wide shot of the city skyline at dawn...",
-    "location": "City rooftop",
-    "framing": "wide-shot",
-    "camera_angle": "high-angle",
-    "camera_movement": "slow-pan",
-    "lighting": "natural",
-    "duration": 5,
-    "movement_notes": "Camera pans left to right",
-    "audio_notes": "Ambient city sounds, soft music"
-  }
-]
-
-Respond ONLY with the JSON array, no additional text.`;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ text: prompt }] }
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.0-flash',
+                    contents: { parts: [{ text: prompt }] }
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
@@ -184,35 +119,19 @@ Respond ONLY with the JSON array, no additional text.`;
         uploadCallback: (file: File, assetId: string) => Promise<string | null>
     ): Promise<string | null> => {
         try {
-            const apiKey = process.env.API_KEY;
-            if (!apiKey) {
-                throw new Error('API Key missing');
-            }
-
-            // Build prompt based on asset type
-            let prompt = '';
-            if (asset.type === 'actor') {
-                prompt = `Professional portrait photo of a person for a storyboard. ${asset.description || asset.name}. Cinematic lighting, neutral background, high quality photography.`;
-            } else if (asset.type === 'environment') {
-                prompt = `Professional location photo for a storyboard. ${asset.description || asset.name}. Cinematic establishing shot, professional photography, detailed environment.`;
-            } else if (asset.type === 'product') {
-                prompt = `Professional product photography for a storyboard. ${asset.description || asset.name}. Commercial photography, clean background, well-lit, high quality.`;
-            }
-
-            // Use the same API structure as ImageGen.tsx
-            const ai = new GoogleGenAI({ apiKey });
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: {
-                    parts: [{ text: prompt }]
-                },
-                config: {
-                    imageConfig: {
-                        aspectRatio: '1:1',
-                    }
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.5-flash-image',
+                    contents: { parts: [{ text: prompt }] },
+                    config: { imageConfig: { aspectRatio: '1:1' } }
                 }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             // Parse response to find image part
             const respParts = response.candidates?.[0]?.content?.parts;

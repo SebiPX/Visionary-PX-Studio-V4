@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
+
 import { useStoryboard } from '../hooks/useStoryboard';
 import { StoryboardSession, StoryAsset, StoryShot } from '../lib/database.types';
 import { supabase } from '../lib/supabaseClient';
@@ -150,24 +150,19 @@ export const StoryStudio: React.FC = () => {
 
         setGeneratingAssetId(asset.id);
         try {
-            const apiKey = process.env.API_KEY;
-            if (!apiKey) throw new Error('API Key missing');
-
-            let prompt = '';
-            if (asset.type === 'actor') {
-                prompt = `Professional portrait photo of a person for a storyboard. ${asset.description || asset.name}. Cinematic lighting, neutral background, high quality photography.`;
-            } else if (asset.type === 'environment') {
-                prompt = `Professional location photo for a storyboard. ${asset.description || asset.name}. Cinematic establishing shot, professional photography, detailed environment.`;
-            } else if (asset.type === 'product') {
-                prompt = `Professional product photography for a storyboard. ${asset.description || asset.name}. Commercial photography, clean background, well-lit, high quality.`;
-            }
-
-            const ai = new GoogleGenAI({ apiKey });
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: { parts: [{ text: prompt }] },
-                config: { imageConfig: { aspectRatio: '1:1' } }
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.5-flash-image',
+                    contents: { parts: [{ text: prompt }] },
+                    config: { imageConfig: { aspectRatio: '1:1' } }
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             const respParts = response.candidates?.[0]?.content?.parts;
             if (respParts) {
@@ -236,51 +231,18 @@ export const StoryStudio: React.FC = () => {
         setError(null);
 
         try {
-            const apiKey = process.env.API_KEY;
-            if (!apiKey) throw new Error('API Key missing');
-
-            const ai = new GoogleGenAI({ apiKey });
-
-            const actorDescriptions = actors
-                .filter(a => a.description)
-                .map((a) => `${a.name}: ${a.description}`)
-                .join(', ');
-
-            // Build context-aware prompt
-            let prompt = '';
-
-            if (storyText.trim()) {
-                // If story text exists, use it as context for continuation/refinement
-                prompt = `You are a professional screenwriter. Based on the following story draft and production elements, ${genre ? `create an improved ${genre}` : 'refine the'} story for a storyboard:
-
-CURRENT STORY DRAFT:
-${storyText}
-
-PRODUCTION ELEMENTS:
-Actors: ${actorDescriptions || 'Not specified'}
-Environment: ${environment?.description || environment?.name || 'Not specified'}
-Product: ${product?.description || product?.name || 'Not specified'}
-Mood: ${mood || 'engaging'}
-Target Audience: ${targetAudience || 'general audience'}
-
-Task: Refine and enhance the story above, incorporating the production elements. Keep the core narrative but make it more visual, cinematic, and suitable for a ${genre || 'commercial'} storyboard. Write 3-5 compelling paragraphs with specific actions and scenes.`;
-            } else {
-                // If no story text, generate from scratch based on setup
-                prompt = `Create a compelling ${genre || 'commercial'} story for a storyboard with the following elements:
-
-Actors: ${actorDescriptions || 'Not specified'}
-Environment: ${environment?.description || environment?.name || 'Not specified'}
-Product: ${product?.description || product?.name || 'Not specified'}
-Mood: ${mood || 'engaging'}
-Target Audience: ${targetAudience || 'general audience'}
-
-Write a concise story (3-5 paragraphs) that would work well for a commercial or short video. Focus on visual storytelling and include specific actions and scenes.`;
-            }
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ text: prompt }] }
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.0-flash',
+                    contents: { parts: [{ text: prompt }] }
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             const generatedStory = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
             setStoryText(generatedStory);
@@ -301,69 +263,18 @@ Write a concise story (3-5 paragraphs) that would work well for a commercial or 
         setError(null);
 
         try {
-            const apiKey = process.env.API_KEY;
-            if (!apiKey) throw new Error('API Key missing');
-
-            const ai = new GoogleGenAI({ apiKey });
-
-            const actorList = actors
-                .filter(a => a.description || a.name)
-                .map(a => `- ${a.name}${a.description ? ': ' + a.description : ''}`)
-                .join('\n');
-
-            const prompt = `You are a professional storyboard artist. Create a detailed shot list for a ${genre || 'commercial'} video based on this information:
-
-STORY:
-${storyText || 'Create a compelling visual narrative'}
-
-ASSETS:
-Actors:
-${actorList || '- Not specified'}
-
-Environment: ${environment?.description || environment?.name || 'Not specified'}
-Product: ${product?.description || product?.name || 'Not specified'}
-
-PARAMETERS:
-- Mood: ${mood || 'engaging'}
-- Target Audience: ${targetAudience || 'general audience'}
-- Duration: 30-60 seconds
-
-Create 5-8 shots that tell this story visually. For each shot, provide:
-1. Scene number
-2. Title (brief, descriptive)
-3. Description (what happens in the shot, 2-3 sentences)
-4. Location (specific place in the environment)
-5. Framing (choose from: extreme-close-up, close-up, medium-shot, full-shot, wide-shot)
-6. Camera angle (choose from: eye-level, high-angle, low-angle, birds-eye, dutch-angle)
-7. Camera movement (choose from: static, pan, tilt, dolly, tracking, crane, handheld)
-8. Lighting (choose from: natural, studio, dramatic, soft, backlit)
-9. Duration (in seconds, 3-10s per shot)
-10. Movement notes (actor/object movements)
-11. Audio notes (dialogue, sound effects, music cues)
-
-Format your response as a JSON array of shot objects. Example:
-[
-  {
-    "scene_number": "1",
-    "title": "Opening Establishing Shot",
-    "description": "Wide shot of the city skyline at dawn...",
-    "location": "City rooftop",
-    "framing": "wide-shot",
-    "camera_angle": "high-angle",
-    "camera_movement": "slow-pan",
-    "lighting": "natural",
-    "duration": 5,
-    "movement_notes": "Camera pans left to right",
-    "audio_notes": "Ambient city sounds, soft music"
-  }
-]
-
-Respond ONLY with the JSON array, no additional text.`;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ text: prompt }] }
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.0-flash',
+                    contents: { parts: [{ text: prompt }] }
+                }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
             const jsonMatch = responseText.match(/\[[\s\S]*\]/);
@@ -412,11 +323,6 @@ Respond ONLY with the JSON array, no additional text.`;
 
         setIsGenerating(true);
         try {
-            const apiKey = process.env.API_KEY;
-            if (!apiKey) throw new Error('API Key missing');
-
-            const ai = new GoogleGenAI({ apiKey });
-
             // Prepare parts for i2i generation
             const parts: any[] = [];
 
@@ -505,16 +411,23 @@ ${parts.length > 0 ? 'Use the reference image(s) for character/environment consi
 
             parts.push({ text: prompt });
 
-            // Generate image
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: { parts: parts },
-                config: {
-                    imageConfig: {
-                        aspectRatio: '16:9',
+            const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+                body: {
+                    action: 'generateContent',
+                    model: 'gemini-2.5-flash-image',
+                    contents: { parts: parts },
+                    config: {
+                        imageConfig: {
+                            aspectRatio: '16:9',
+                        }
                     }
                 }
             });
+
+            if (error || response?.error) {
+                console.error("Gemini API Error:", error || response?.error);
+                throw new Error(response?.error || error?.message);
+            }
 
             // Parse response
             const respParts = response.candidates?.[0]?.content?.parts;

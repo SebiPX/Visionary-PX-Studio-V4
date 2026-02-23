@@ -388,7 +388,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 
 # Google AI Configuration
-VITE_GEMINI_API_KEY=your-gemini-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ---

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
+
 import ReactMarkdown from 'react-markdown';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { ChatSession } from '../lib/database.types';
@@ -8,28 +8,25 @@ import { supabase } from '../lib/supabaseClient';
 // ── Onboarding RAG helpers ─────────────────────────────────────────────────
 const EMBED_MODEL = 'gemini-embedding-001';
 
-async function embedText(text: string, apiKey: string): Promise<number[]> {
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: `models/${EMBED_MODEL}`,
-        content: { parts: [{ text }] },
-        taskType: 'RETRIEVAL_QUERY',
-        outputDimensionality: 768,
-      }),
+async function embedText(text: string): Promise<number[]> {
+  const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+    body: {
+      action: 'embedContent',
+      model: `text-embedding-004`,
+      contents: text
     }
-  );
-  if (!resp.ok) throw new Error(`Embed API error: ${resp.status}`);
-  const data = await resp.json();
-  return data.embedding.values as number[];
+  });
+
+  if (error || response?.error) {
+    throw new Error(`Embed API error: ${error?.message || response?.error}`);
+  }
+
+  return response.embedding.values as number[];
 }
 
-async function retrieveOnboardingContext(question: string, apiKey: string): Promise<string> {
+async function retrieveOnboardingContext(question: string): Promise<string> {
   try {
-    const embedding = await embedText(question, apiKey);
+    const embedding = await embedText(question);
     const { data, error } = await supabase.rpc('match_onboarding_docs', {
       query_embedding: embedding,
       match_count: 5,
@@ -113,7 +110,6 @@ export const ChatBot: React.FC = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   // Refs
-  const chatSessionRef = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load chat sessions from database
@@ -149,15 +145,6 @@ export const ChatBot: React.FC = () => {
 
   // Initialize Chat Session
   useEffect(() => {
-    if (!process.env.API_KEY) return;
-
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    chatSessionRef.current = ai.chats.create({
-      model: 'gemini-3-flash-preview',
-      config: {
-        systemInstruction: activePersona.instruction,
-      },
-    });
 
     // Set initial greeting or switch message
     setMessages([{
@@ -176,7 +163,7 @@ export const ChatBot: React.FC = () => {
   }, [messages, isTyping]);
 
   const handleSend = async () => {
-    if (!inputText.trim() || !chatSessionRef.current || isTyping) return;
+    if (!inputText.trim() || isTyping) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', text: inputText };
     setMessages(prev => [...prev, userMsg]);
@@ -188,8 +175,7 @@ export const ChatBot: React.FC = () => {
 
       // ── RAG: inject company knowledge for Onboarding persona ──────────────
       if (activePersona.id === 'onboarding') {
-        const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.API_KEY || '';
-        const context = await retrieveOnboardingContext(userMsg.text, apiKey);
+        const context = await retrieveOnboardingContext(userMsg.text);
         if (context) {
           messageToSend =
             `Beantworte die folgende Frage basierend auf dem Pixelschickeria-Firmenwissen. ` +
@@ -201,22 +187,34 @@ export const ChatBot: React.FC = () => {
       }
       // ─────────────────────────────────────────────────────────────────────
 
-      const resultStream = await chatSessionRef.current.sendMessageStream({ message: messageToSend });
+      const historyMsgs = messages.filter(m => m.role === 'user' || (m.role === 'model' && m.text && !m.text.startsWith('System:') && !m.text.startsWith('Hello!')));
+
+      const contents = historyMsgs.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
+      contents.push({ role: 'user', parts: [{ text: messageToSend }] });
+
+      const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
+        body: {
+          action: 'generateContent',
+          model: 'gemini-3-flash-preview',
+          contents: contents,
+          config: {
+            systemInstruction: activePersona.instruction
+          }
+        }
+      });
+
+      if (error || response?.error) {
+        console.error("Gemini API Error:", error || response?.error);
+        throw new Error(response?.error || error?.message);
+      }
 
       const modelMsgId = (Date.now() + 1).toString();
-      setMessages(prev => [...prev, { id: modelMsgId, role: 'model', text: '' }]);
+      const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-      let fullText = '';
-
-      for await (const chunk of resultStream) {
-        const c = chunk as GenerateContentResponse;
-        if (c.text) {
-          fullText += c.text;
-          setMessages(prev =>
-            prev.map(msg => msg.id === modelMsgId ? { ...msg, text: fullText } : msg)
-          );
-        }
-      }
+      setMessages(prev => [...prev, { id: modelMsgId, role: 'model', text: responseText }]);
 
       setTimeout(() => saveCurrentSession(), 500);
     } catch (error) {
