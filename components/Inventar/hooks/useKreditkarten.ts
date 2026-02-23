@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../../../lib/supabaseClient'
 import type { Kreditkarte } from '../types'
 
 export function useKreditkarten() {
