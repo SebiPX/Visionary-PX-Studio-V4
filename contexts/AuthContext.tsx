@@ -167,25 +167,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signOut = async () => {
-        try {
-            const { error } = await supabase.auth.signOut();
-            if (error) console.error("Signout error:", error);
-        } catch (err) {
-            console.warn("Signout aborted or failed:", err);
-        } finally {
-            // Force clear local storage for supabase tokens
-            for (const key of Object.keys(localStorage)) {
-                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-                    localStorage.removeItem(key);
-                }
-            }
-            setUser(null);
-            setSession(null);
-            setProfile(null);
+        // Step 1: Nuke all Supabase tokens from storage immediately (synchronous)
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-')) localStorage.removeItem(key);
+        });
+        Object.keys(sessionStorage).forEach(key => {
+            if (key.startsWith('sb-')) sessionStorage.removeItem(key);
+        });
 
-            // Force reload to completely reset auth state in memory
-            window.location.href = '/';
-        }
+        // Step 2: Clear React state immediately
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+
+        // Step 3: Fire API call in background (best-effort, we don't await)
+        supabase.auth.signOut().catch(err => {
+            console.warn("Background signOut API call failed (already cleared locally):", err);
+        });
+
+        // Step 4: Hard reload to reset all in-memory JS state
+        window.location.replace('/');
     };
 
     // Reset password - sends email with reset link
