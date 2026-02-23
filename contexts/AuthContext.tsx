@@ -166,12 +166,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
     };
 
-    // Sign out
     const signOut = async () => {
-        await supabase.auth.signOut();
-        setUser(null);
-        setSession(null);
-        setProfile(null);
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) console.error("Signout error:", error);
+        } catch (err) {
+            console.warn("Signout aborted or failed:", err);
+        } finally {
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+        }
     };
 
     // Reset password - sends email with reset link
