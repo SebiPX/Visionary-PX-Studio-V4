@@ -173,9 +173,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (err) {
             console.warn("Signout aborted or failed:", err);
         } finally {
+            // Force clear local storage for supabase tokens
+            for (const key of Object.keys(localStorage)) {
+                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                    localStorage.removeItem(key);
+                }
+            }
             setUser(null);
             setSession(null);
             setProfile(null);
+
+            // Force reload to completely reset auth state in memory
+            window.location.href = '/';
         }
     };
 
