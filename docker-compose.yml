@@ -1,0 +1,23 @@
+version: "3.8"
+
+networks:
+  proxy-netz:
+    external: true
+
+services:
+  app:
+    container_name: px-aissistent-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+        VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
+    restart: always
+    ports:
+      - "${APP_PORT:-3000}:80"
+    networks:
+      - proxy-netz
+    env_file:
+      - .env
