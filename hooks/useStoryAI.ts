@@ -24,11 +24,23 @@ export const useStoryAI = () => {
         setError(null);
 
         try {
+            const prompt = `
+            Erstelle eine detaillierte, fesselnde kreative Story basierend auf den folgenden Parametern. 
+            Die Story sollte ca. 50-100 Wörter umfassen und eine klare Handlung haben.
+            
+            Darsteller: ${params.actors.map(a => a.name).join(', ')}
+            Location/Umgebung: ${params.environment?.name || 'Nicht spezifiziert'}
+            Produkt: ${params.product?.name || 'Nicht spezifiziert'}
+            Genre: ${params.genre}
+            Stimmung: ${params.mood}
+            Zielgruppe: ${params.targetAudience}
+            `;
+
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.0-flash',
-                    contents: { parts: [{ text: prompt }] }
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }]
                 }
             });
 
@@ -54,11 +66,42 @@ export const useStoryAI = () => {
         setError(null);
 
         try {
+            const prompt = `
+            Erstelle eine Shot-Liste basierend auf der folgenden Story.
+            Storyboard Parameter:
+            Darsteller: ${params.actors.map(a => a.name).join(', ')}
+            Location/Umgebung: ${params.environment?.name || 'Nicht spezifiziert'}
+            Produkt: ${params.product?.name || 'Nicht spezifiziert'}
+            Genre: ${params.genre}
+            Stimmung: ${params.mood}
+            
+            Story:
+            ${params.storyText}
+            
+            Gib die Antwort **ausschließlich** als valides JSON-Array zurück, das eine Liste von Shots enthält.
+            Benutze exakt dieses Format für jeden Shot in der Liste:
+            [
+              {
+                "scene_number": "1",
+                "title": "Titel des Shots",
+                "description": "Bildbeschreibung was passiert",
+                "location": "Ort des Geschehens",
+                "framing": "medium-shot",
+                "camera_angle": "eye-level",
+                "camera_movement": "static",
+                "lighting": "natural",
+                "audio_notes": "Audio Notizen",
+                "duration": 5,
+                "movement_notes": "Bewegungsnotizen"
+              }
+            ]
+            `;
+
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.0-flash',
-                    contents: { parts: [{ text: prompt }] }
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }]
                 }
             });
 
@@ -119,11 +162,18 @@ export const useStoryAI = () => {
         uploadCallback: (file: File, assetId: string) => Promise<string | null>
     ): Promise<string | null> => {
         try {
+            const prompt = `Generiere ein realistisches, professionelles Bild für:
+                Typ: ${asset.type}
+                Name: ${asset.name}
+                Beschreibung: ${asset.description}
+                Das Bild sollte einen neutralen Hintergrund haben und isoliert dargestellt sein.
+            `;
+
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.5-flash-image',
-                    contents: { parts: [{ text: prompt }] },
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
                     config: { imageConfig: { aspectRatio: '1:1' } }
                 }
             });

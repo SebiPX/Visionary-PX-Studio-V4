@@ -133,11 +133,6 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
             if (!hasKey) {
                 await aistudio.openSelectKey();
             }
-        } else {
-            if (!process.env.API_KEY) {
-                alert("API Key missing");
-                return;
-            }
         }
 
         setIsGenerating(true);
@@ -186,10 +181,9 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
 
             const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
             if (downloadLink) {
-                const finalUrl = `${downloadLink}&key=${process.env.API_KEY}`;
-                setVideoUri(finalUrl);
+                setVideoUri(downloadLink);
                 setIsPlaying(true);
-                addToHistory(finalUrl, prompt);
+                addToHistory(downloadLink, prompt);
             }
 
         } catch (e) {

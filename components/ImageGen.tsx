@@ -115,7 +115,7 @@ export const ImageGen: React.FC<ImageGenProps> = ({ selectedItemId, onItemLoaded
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.5-flash-image',
-                    contents: { parts: parts },
+                    contents: [{ role: 'user', parts: parts }],
                     config: {
                         imageConfig: {
                             aspectRatio: aspectRatio,

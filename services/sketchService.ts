@@ -58,7 +58,8 @@ export const generateImageFromSketch = async (
         const response = await invokeProxy({
             action: 'generateContent',
             model: GEMINI_MODEL,
-            contents: {
+            contents: [{
+                role: 'user',
                 parts: [
                     { text: prompt.trim() },
                     {
@@ -68,7 +69,7 @@ export const generateImageFromSketch = async (
                         }
                     }
                 ]
-            },
+            }],
             config: {
                 imageConfig: {
                     aspectRatio: aspectRatio,
@@ -101,7 +102,8 @@ export const editGeneratedImage = async (
         const response = await invokeProxy({
             action: 'generateContent',
             model: GEMINI_MODEL,
-            contents: {
+            contents: [{
+                role: 'user',
                 parts: [
                     { text: prompt.trim() },
                     {
@@ -111,7 +113,7 @@ export const editGeneratedImage = async (
                         }
                     }
                 ]
-            }
+            }]
         });
 
         return extractImageFromResponse(response);
