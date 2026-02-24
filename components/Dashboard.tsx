@@ -119,9 +119,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView, navigateToItem })
             {/* Welcome Section */}
             <div className="mb-8">
                 <h2 className="text-2xl font-bold text-white mb-2">
-                    Welcome back, {profile?.full_name || 'Creator'}
+                    Willkommen zurück, {profile?.full_name || 'User'}
                 </h2>
-                <p className="text-slate-400">Your AI workspace is ready. What will you create today?</p>
+                <p className="text-slate-400">Dein KI-Workspace ist bereit. Was erstellst du heute?</p>
             </div>
 
             {/* Tools & Apps section */}

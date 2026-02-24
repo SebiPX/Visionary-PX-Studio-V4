@@ -27,8 +27,8 @@ const AppContent: React.FC = () => {
 
   // Convert Supabase profile to UserProfile format
   const userProfile: UserProfile = {
-    name: profile?.full_name || 'Creator',
-    avatarUrl: profile?.avatar_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBNsFqWF5iQVNoUnwyaSNFSunX3-x1P3ttQm5pyya4GFxDRald1TQRNJ-pm7yRDH_DXIbLa7Gf1SXid866fs9ZRN-8knroGfTH_N_G-SlVwrSyBjqHgpQ-PrQw3wmDociqLcHIV5exvR0KDaFwS86J5lOIJxU8ccJZei2AWW0WnK0tUea-eXfEy3fa3GETpPANrkA7ipZp1c2bEWI1YyoMaea-hPMGkJnYM3lreBtaTxfJVmW5CDhlRaQ-XVzLDSlB-vtrPmzzrtLUI'
+    name: profile?.full_name || user?.email?.split('@')[0] || 'User',
+    avatarUrl: profile?.avatar_url || undefined
   };
 
   // Show loading spinner while checking auth
