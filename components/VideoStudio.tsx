@@ -179,7 +179,6 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
                         mimeType: 'image/png'
                     } : undefined,
                     config: {
-                        numberOfVideos: 1,
                         resolution: (activeMode === 'IMAGE' && uploadedImage) ? '720p' : '1080p',
                         aspectRatio: aspectRatio
                     }
@@ -187,7 +186,7 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
             });
 
             if (error || response?.error) {
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
             let operation = response;
@@ -203,18 +202,51 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
                 });
 
                 if (opError || opResponse?.error) {
-                    throw new Error(opResponse?.error || opError?.message);
+                    throw new Error(opError?.message || JSON.stringify(opResponse?.error));
                 }
 
                 operation = opResponse;
             }
 
-            const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-            if (downloadLink) {
-                setVideoUri(downloadLink);
-                setIsPlaying(true);
-                addToHistory(downloadLink, prompt);
+            const googleUri =
+                operation.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
+
+            if (!googleUri) {
+                console.warn('[VideoStudio] Unexpected response structure:', JSON.stringify(operation));
+                throw new Error('Video generated but no download URL found in response.');
             }
+
+            // 1. Download the video from Google Files API (needs the API key)
+            const apiKey = (process.env.GEMINI_API_KEY || process.env.API_KEY || '');
+            const googleDownloadUrl = googleUri.includes('?')
+                ? `${googleUri}&key=${apiKey}`
+                : `${googleUri}?key=${apiKey}`;
+
+            const videoBlob = await (await fetch(googleDownloadUrl)).blob();
+
+            // 2. Upload to Supabase Storage for a permanent URL
+            const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}.mp4`;
+            const { error: uploadError } = await supabase.storage
+                .from('generated_assets')
+                .upload(`videos/${fileName}`, videoBlob, { contentType: 'video/mp4' });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('generated_assets')
+                .getPublicUrl(`videos/${fileName}`);
+
+            // 3. Save to DB & update UI
+            setVideoUri(publicUrl);
+            setIsPlaying(true);
+            await saveVideo({
+                prompt,
+                model: 'veo-3.1-fast-generate-preview',
+                video_url: publicUrl,
+                config: { mode: activeMode, duration, aspectRatio, cameraMotion },
+            });
+            loadVideoHistory();
+
 
         } catch (e) {
             console.error("Video generation failed", e);
