@@ -134,7 +134,7 @@ export const StoryStudio: React.FC = () => {
                 .from('storyboard-assets')
                 .getPublicUrl(fileName);
 
-            return normalizeStorageUrl(publicUrl);
+            return `${normalizeStorageUrl(publicUrl)}?t=${Date.now()}`;
         } catch (err) {
             console.error('Upload error:', err);
             setError('Fehler beim Hochladen des Bildes');
@@ -240,11 +240,27 @@ Cinematic, detailed, professional production design.`;
         setError(null);
 
         try {
+            // Build story prompt from all available session context
+            const assetContext = [
+                ...actors.map(a => `Actor "${a.name}": ${a.description}`),
+                environment ? `Environment "${environment.name}": ${environment.description}` : null,
+                product ? `Product/Object "${product.name}": ${product.description}` : null,
+            ].filter(Boolean).join('\n');
+
+            const storyPrompt = `You are a creative storyboard writer. Generate a compelling story narrative for a storyboard.
+Project: ${sessionTitle}
+Genre: ${genre || 'not specified'}
+Mood: ${mood || 'not specified'}
+Target Audience: ${targetAudience || 'general audience'}
+${assetContext ? `\nAssets:\n${assetContext}` : ''}
+
+Write a concise story narrative (3-5 paragraphs) with a clear beginning, middle and end, suitable for visual storytelling. Incorporate the defined assets naturally.`;
+
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-3-flash-preview',
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }]
+                    contents: [{ role: 'user', parts: [{ text: storyPrompt }] }]
                 }
             });
 
