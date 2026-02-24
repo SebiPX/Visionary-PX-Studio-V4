@@ -288,13 +288,49 @@ Write a concise story narrative (3-5 paragraphs) with a clear beginning, middle 
         setError(null);
 
         try {
+            // Build shot list prompt from full story context
+            const assetList = [
+                ...actors.map(a => `- Actor: "${a.name}" (${a.description})`),
+                environment ? `- Environment: "${environment.name}" (${environment.description})` : null,
+                product ? `- Product/Object: "${product.name}" (${product.description})` : null,
+            ].filter(Boolean).join('\n');
+
+            const shotsPrompt = `You are a professional storyboard artist and film director.
+Project: "${sessionTitle}"
+Genre: ${genre || 'not specified'} | Mood: ${mood || 'not specified'} | Target Audience: ${targetAudience || 'general audience'}
+
+Story:
+${storyText || 'A story about the defined assets below.'}
+
+Assets:
+${assetList || '(No specific assets defined)'}
+
+Create a storyboard shot list of 6-10 shots. Return ONLY a valid JSON array with NO additional text, markdown, or explanation.
+Each shot must follow this exact structure:
+[
+  {
+    "scene_number": "1",
+    "title": "Short shot title",
+    "description": "What happens in this shot",
+    "location": "Where the shot takes place",
+    "framing": "close-up|medium-shot|wide-shot|extreme-wide|over-the-shoulder",
+    "camera_angle": "eye-level|high-angle|low-angle|dutch-angle|birds-eye",
+    "camera_movement": "static|pan|tilt|dolly|handheld|tracking",
+    "lighting": "natural|studio|dramatic|soft|harsh",
+    "audio_notes": "Sound design notes",
+    "movement_notes": "Actor/subject movement description",
+    "duration": 5
+  }
+]`;
+
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-3-flash-preview',
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }]
+                    contents: [{ role: 'user', parts: [{ text: shotsPrompt }] }]
                 }
             });
+
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
