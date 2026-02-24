@@ -28,3 +28,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 console.log('✅ Supabase client ready');
+
+/**
+ * Converts an internal Supabase Storage URL (http://host:8000/storage/...)
+ * to the public HTTPS URL (https://host/storage/...) served by Nginx Proxy Manager.
+ * Falls back to VITE_SUPABASE_PUBLIC_URL if provided.
+ */
+export const normalizeStorageUrl = (url: string): string => {
+    // Allow explicit override via env var
+    const publicBase = import.meta.env.VITE_SUPABASE_PUBLIC_URL as string | undefined;
+    if (publicBase) {
+        return url.replace(supabaseUrl, publicBase);
+    }
+    // Auto-normalize: http://host:PORT/... → https://host/...
+    return url.replace(/^http:\/\/([^/:]+):\d+(\/.*)?$/, 'https://$1$2');
+};
+

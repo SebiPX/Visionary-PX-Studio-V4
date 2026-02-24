@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, normalizeStorageUrl } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedThumbnail } from '../lib/database.types';
 import { BackgroundTool } from './ThumbnailEngine/components/BackgroundTool';
@@ -279,9 +279,10 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
                             .upload(`thumbnails/${fileName}`, imageBlob, { contentType: mimeType });
                         if (uploadError) throw uploadError;
 
-                        const { data: { publicUrl } } = supabase.storage
+                        const { data: { publicUrl: rawUrl } } = supabase.storage
                             .from('generated_assets')
                             .getPublicUrl(`thumbnails/${fileName}`);
+                        const publicUrl = normalizeStorageUrl(rawUrl);
 
                         setGeneratedImage(publicUrl);
                         addToHistory(publicUrl);

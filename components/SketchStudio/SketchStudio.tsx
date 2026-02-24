@@ -6,7 +6,7 @@ import { AppState, ContextOption, StyleOption } from './types';
 import { generateImageFromSketch, editGeneratedImage } from '../../services/sketchService';
 import { useGeneratedContent } from '../../hooks/useGeneratedContent';
 import { GeneratedSketch } from '../../lib/database.types';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase, normalizeStorageUrl } from '../../lib/supabaseClient';
 
 export const SketchStudio: React.FC = () => {
     // ========================================================================
@@ -70,7 +70,7 @@ export const SketchStudio: React.FC = () => {
                     .from('generated_assets')
                     .upload(path, blob, { contentType: 'image/png', upsert: false });
                 if (error) { console.error('[SketchStudio] Upload failed:', path, error.message); return ''; }
-                return supabase.storage.from('generated_assets').getPublicUrl(path).data.publicUrl;
+                return normalizeStorageUrl(supabase.storage.from('generated_assets').getPublicUrl(path).data.publicUrl);
             };
 
             const [imageUrl, sketchUrl] = await Promise.all([

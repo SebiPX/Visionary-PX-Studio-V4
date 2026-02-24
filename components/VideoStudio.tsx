@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, normalizeStorageUrl } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedVideo } from '../lib/database.types';
 
@@ -111,7 +111,7 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
             const { data: urlData } = supabaseClient.storage
                 .from('generated_assets')
                 .getPublicUrl(filePath);
-            const permanentUrl = urlData.publicUrl;
+            const permanentUrl = normalizeStorageUrl(urlData.publicUrl);
 
             // 4. Save permanent URL to DB
             await saveVideo({
@@ -232,10 +232,10 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
 
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage
+            const { data: { publicUrl: rawVideoUrl } } = supabase.storage
                 .from('generated_assets')
                 .getPublicUrl(`videos/${fileName}`);
-
+            const publicUrl = normalizeStorageUrl(rawVideoUrl);
             // 3. Save to DB & update UI
             setVideoUri(publicUrl);
             setIsPlaying(true);

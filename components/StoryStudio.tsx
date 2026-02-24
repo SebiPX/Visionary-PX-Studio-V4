@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { useStoryboard } from '../hooks/useStoryboard';
 import { StoryboardSession, StoryAsset, StoryShot } from '../lib/database.types';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, normalizeStorageUrl } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { ShotEditor } from './ShotEditor';
 import { SetupPhase, StoryPhase, StoryboardPhase, ReviewPhase } from './StoryStudio/phases';
@@ -134,7 +134,7 @@ export const StoryStudio: React.FC = () => {
                 .from('storyboard-assets')
                 .getPublicUrl(fileName);
 
-            return publicUrl;
+            return normalizeStorageUrl(publicUrl);
         } catch (err) {
             console.error('Upload error:', err);
             setError('Fehler beim Hochladen des Bildes');
@@ -234,7 +234,7 @@ export const StoryStudio: React.FC = () => {
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
-                    model: 'gemini-2.0-flash',
+                    model: 'gemini-3-flash-preview',
                     contents: [{ role: 'user', parts: [{ text: prompt }] }]
                 }
             });
@@ -266,7 +266,7 @@ export const StoryStudio: React.FC = () => {
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
-                    model: 'gemini-2.0-flash',
+                    model: 'gemini-3-flash-preview',
                     contents: [{ role: 'user', parts: [{ text: prompt }] }]
                 }
             });
@@ -461,8 +461,7 @@ ${parts.length > 0 ? 'Use the reference image(s) for character/environment consi
                             .from('storyboard-assets')
                             .getPublicUrl(fileName);
 
-                        // Add cache-busting timestamp to force browser reload
-                        const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
+                        const cacheBustedUrl = `${normalizeStorageUrl(publicUrl)}?t=${Date.now()}`;
 
                         return cacheBustedUrl;
                     }

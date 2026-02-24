@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, normalizeStorageUrl } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedImage } from '../lib/database.types';
 
@@ -146,9 +146,10 @@ export const ImageGen: React.FC<ImageGenProps> = ({ selectedItemId, onItemLoaded
                             .upload(`images/${fileName}`, imageBlob, { contentType: mimeType });
                         if (uploadError) throw uploadError;
 
-                        const { data: { publicUrl } } = supabase.storage
+                        const { data: { publicUrl: rawUrl } } = supabase.storage
                             .from('generated_assets')
                             .getPublicUrl(`images/${fileName}`);
+                        const publicUrl = normalizeStorageUrl(rawUrl);
 
                         setCurrentImage(publicUrl);
                         await saveImage({
