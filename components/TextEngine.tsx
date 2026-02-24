@@ -58,6 +58,8 @@ export const TextEngine: React.FC = () => {
         setIsGenerating(true);
         try {
 
+            const today = new Date().toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' });
+
             let prompt = "";
             if (isContinuation) {
                 prompt = `Continue the following text, keeping the same style and context. The text is for a ${activePlatform} post about "${topic || 'Web3 and Digital Ownership'}". \n\nExisting text:\n${content}\n\nIMPORTANT: Only output the continuation text. Do not include any introductions, explanations, or meta-commentary. IMPORTANT: Write the entire output in ${language}.`;
@@ -69,16 +71,20 @@ export const TextEngine: React.FC = () => {
                     'LinkedIn': 'Write a professional LinkedIn post. Use a business tone, include insights, and end with a thought-provoking question or call-to-action.'
                 };
 
-                prompt = `${platformInstructions[activePlatform]}\n\nTopic: "${topic || 'The impact of Web3 on digital art'}"\nTarget Audience: ${audience || 'Creative Professionals'}\nTone: ${tone}\n\n${useTrends ? 'IMPORTANT: Research the latest trends, news, and current information about this topic using Google Search. Incorporate recent developments and data into your content.\n\n' : ''}IMPORTANT: Output ONLY the ${activePlatform} content. Do not include any introductions like "Here is..." or explanations. Start directly with the content. IMPORTANT: Write the entire output in ${language}.`;
+                prompt = `${platformInstructions[activePlatform]}\n\nTopic: "${topic || 'The impact of Web3 on digital art'}"\nTarget Audience: ${audience || 'Creative Professionals'}\nTone: ${tone}\n\n${useTrends ? `IMPORTANT: Today is ${today}. Use Google Search to research the LATEST and most CURRENT information, news, and data about this topic from 2025 and 2026. Prioritize recent developments over older information. Mention specific recent events, statistics, or announcements from the past few months.\n\n` : ''}IMPORTANT: Output ONLY the ${activePlatform} content. Do not include any introductions like "Here is..." or explanations. Start directly with the content. IMPORTANT: Write the entire output in ${language}.`;
             }
 
             const systemInstruction = "You are an expert content creator specializing in tech and creative industries.";
             const tools = (useTrends && !isContinuation) ? [{ googleSearch: {} }] : undefined;
 
+            // gemini-1.5-pro has proven Search grounding support; use it when Trends is active.
+            // gemini-3-flash-preview is faster for standard generation without search.
+            const model = tools ? 'gemini-1.5-pro' : 'gemini-3-flash-preview';
+
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
-                    model: 'gemini-3-flash-preview',
+                    model,
                     contents: [{ role: 'user', parts: [{ text: prompt }] }],
                     systemInstruction,
                     ...(tools ? { tools } : {})
