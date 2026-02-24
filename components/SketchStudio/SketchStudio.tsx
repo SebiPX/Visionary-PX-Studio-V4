@@ -56,53 +56,47 @@ export const SketchStudio: React.FC = () => {
             setGeneratedImage(result);
             setAppState(AppState.RESULT);
 
-            // Upload generated image to Supabase Storage
-            // (storing raw base64 in the DB would exceed the request payload limit)
-            let imageUrl = ''; // start empty — do NOT fall back to base64 silently
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    const base64Data = result.replace(/^data:image\/\w+;base64,/, '');
-                    const byteCharacters = atob(base64Data);
-                    const byteArray = new Uint8Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        byteArray[i] = byteCharacters.charCodeAt(i);
-                    }
-                    const blob = new Blob([byteArray], { type: 'image/png' });
-                    const fileName = `sketches/${user.id}/${Date.now()}.png`;
+            // Upload BOTH images to Supabase Storage in parallel
+            const ts = Date.now();
+            const rand = () => Math.random().toString(36).substr(2, 6);
 
-                    const { error: uploadError } = await supabase.storage
-                        .from('generated_assets')
-                        .upload(fileName, blob, { contentType: 'image/png', upsert: false });
+            const [generatedBlob, sketchBlob] = await Promise.all([
+                (await fetch(result)).blob(),
+                (await fetch(snapshot)).blob(),
+            ]);
 
-                    if (!uploadError) {
-                        const { data: urlData } = supabase.storage
-                            .from('generated_assets')
-                            .getPublicUrl(fileName);
-                        imageUrl = urlData.publicUrl;
-                        console.log('[SketchStudio] Uploaded to Storage:', imageUrl);
-                    } else {
-                        console.error('[SketchStudio] Storage upload failed:', uploadError.message);
-                        imageUrl = result; // explicit fallback on upload error
-                    }
-                }
-            } catch (uploadErr) {
-                console.error('[SketchStudio] Storage upload error:', uploadErr);
-                imageUrl = result; // explicit fallback on unexpected error
-            }
+            const uploadFile = async (blob: Blob, path: string) => {
+                const { error } = await supabase.storage
+                    .from('generated_assets')
+                    .upload(path, blob, { contentType: 'image/png', upsert: false });
+                if (error) { console.error('[SketchStudio] Upload failed:', path, error.message); return ''; }
+                return supabase.storage.from('generated_assets').getPublicUrl(path).data.publicUrl;
+            };
 
-            // Save to database (only permanent URL, not the raw base64 sketch)
-            await saveSketch({
-                sketch_data: '',  // omitted — too large for DB, not needed for history
-                generated_image_url: imageUrl,
+            const [imageUrl, sketchUrl] = await Promise.all([
+                uploadFile(generatedBlob, `sketches/${ts}_${rand()}.png`),
+                uploadFile(sketchBlob, `sketches/originals/${ts}_${rand()}.png`),
+            ]);
+
+            console.log('[SketchStudio] Generated:', imageUrl);
+            console.log('[SketchStudio] Original sketch:', sketchUrl);
+
+            // Save to database — both as Storage URLs (no base64 in DB)
+            const saveResult = await saveSketch({
+                sketch_data: sketchUrl || snapshot,        // URL or base64 fallback
+                generated_image_url: imageUrl || result,   // URL or base64 fallback
                 context,
                 style,
                 edit_history: [],
             });
+            if (!saveResult?.success) {
+                console.error('[SketchStudio] DB save failed:', saveResult?.error);
+            }
 
             // Reload history
             const sketches = await loadSketchHistory(20);
             setHistory(sketches);
+
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'Failed to generate image. Please try again.');

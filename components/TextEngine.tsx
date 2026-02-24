@@ -78,7 +78,7 @@ export const TextEngine: React.FC = () => {
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
-                    model: 'gemini-2.0-flash',
+                    model: 'gemini-3-flash-preview',
                     contents: [{ role: 'user', parts: [{ text: prompt }] }],
                     systemInstruction,
                     ...(tools ? { tools } : {})
