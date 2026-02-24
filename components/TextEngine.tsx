@@ -72,23 +72,16 @@ export const TextEngine: React.FC = () => {
                 prompt = `${platformInstructions[activePlatform]}\n\nTopic: "${topic || 'The impact of Web3 on digital art'}"\nTarget Audience: ${audience || 'Creative Professionals'}\nTone: ${tone}\n\n${useTrends ? 'IMPORTANT: Research the latest trends, news, and current information about this topic using Google Search. Incorporate recent developments and data into your content.\n\n' : ''}IMPORTANT: Output ONLY the ${activePlatform} content. Do not include any introductions like "Here is..." or explanations. Start directly with the content. IMPORTANT: Write the entire output in ${language}.`;
             }
 
-            const config: any = {};
             const systemInstruction = "You are an expert content creator specializing in tech and creative industries.";
-
-            // Enable Google Search grounding if trends are enabled
-            if (useTrends && !isContinuation) {
-                config.tools = [{
-                    googleSearch: {}
-                }];
-            }
+            const tools = (useTrends && !isContinuation) ? [{ googleSearch: {} }] : undefined;
 
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
-                    model: 'gemini-3-flash-preview',
+                    model: 'gemini-2.0-flash',
                     contents: [{ role: 'user', parts: [{ text: prompt }] }],
                     systemInstruction,
-                    ...(Object.keys(config).length > 0 ? { config } : {})
+                    ...(tools ? { tools } : {})
                 }
             });
 

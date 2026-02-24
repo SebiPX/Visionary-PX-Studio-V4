@@ -24,7 +24,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const body = await req.json();
-    const { action, model, contents, config, systemInstruction, prompt, image, operation } = body;
+    const { action, model, contents, config, systemInstruction, tools, prompt, image, operation } = body;
 
     // ---- generateContent (text, images, sketch) ----
     if (action === 'generateContent') {
@@ -35,6 +35,9 @@ export default async function handler(req: Request): Promise<Response> {
       }
       if (config) {
         geminiBody.generationConfig = config;
+      }
+      if (tools) {
+        geminiBody.tools = tools;
       }
 
       const res = await fetch(url, {
