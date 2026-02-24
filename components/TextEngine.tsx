@@ -77,10 +77,9 @@ export const TextEngine: React.FC = () => {
             const systemInstruction = "You are an expert content creator specializing in tech and creative industries.";
             const tools = (useTrends && !isContinuation) ? [{ googleSearch: {} }] : undefined;
 
-            // gemini-2.0-flash-exp uses { googleSearch: {} } tool format (same as we send).
-            // gemini-1.5-pro uses a different format (google_search_retrieval) → causes 404.
-            // gemini-3-flash-preview is faster for standard generation without search.
-            const model = tools ? 'gemini-2.0-flash-exp' : 'gemini-3-flash-preview';
+            // gemini-3-flash-preview supports { googleSearch: {} } tools and is confirmed working.
+            // Experimental alternatives (gemini-1.5-pro, gemini-2.0-flash-exp) returned 404.
+            const model = 'gemini-3-flash-preview';
 
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
