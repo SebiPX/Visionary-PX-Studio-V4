@@ -1,6 +1,7 @@
 // @ts-nocheck
-// Gemini Proxy Edge Function
-// Uses native fetch() - no npm/SDK imports needed, works on self-hosted Supabase
+// gemini-proxy/index.ts
+// Exports a default handler — called by main/index.ts router
+// Does NOT call Deno.serve() (that's handled by main/index.ts)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +10,7 @@ const corsHeaders = {
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -108,4 +109,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}
