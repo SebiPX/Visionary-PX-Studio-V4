@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ContextOption, StyleOption } from './types';
+import { downloadAsset } from '../../lib/supabaseClient';
 
 interface ResultViewProps {
   originalSketch: string;
@@ -31,12 +32,7 @@ const ResultView: React.FC<ResultViewProps> = ({
   };
 
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = generatedImage;
-    link.download = `sketch-masterpiece-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadAsset(generatedImage, `sketch-masterpiece-${Date.now()}.png`);
   };
 
   return (

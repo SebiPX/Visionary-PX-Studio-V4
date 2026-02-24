@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { supabase, normalizeStorageUrl } from '../lib/supabaseClient';
+import { supabase, normalizeStorageUrl, downloadAsset } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedImage } from '../lib/database.types';
 
@@ -173,12 +173,7 @@ export const ImageGen: React.FC<ImageGenProps> = ({ selectedItemId, onItemLoaded
     };
 
     const handleDownload = () => {
-        const link = document.createElement('a');
-        link.href = currentImage;
-        link.download = `generated-image-${Date.now()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        downloadAsset(currentImage, `generated-image-${Date.now()}.png`);
     };
 
     const handlePreview = () => {

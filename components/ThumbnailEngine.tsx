@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { supabase, normalizeStorageUrl } from '../lib/supabaseClient';
+import { supabase, normalizeStorageUrl, downloadAsset } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedThumbnail } from '../lib/database.types';
 import { BackgroundTool } from './ThumbnailEngine/components/BackgroundTool';
@@ -117,12 +117,7 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
 
     const handleDownload = () => {
         if (!generatedImage) return;
-        const link = document.createElement('a');
-        link.href = generatedImage;
-        link.download = `thumbnail-${Date.now()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        downloadAsset(generatedImage, `thumbnail-${Date.now()}.png`);
     };
 
     const handlePreview = () => {

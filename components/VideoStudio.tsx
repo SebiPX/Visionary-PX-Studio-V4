@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { supabase, normalizeStorageUrl } from '../lib/supabaseClient';
+import { supabase, normalizeStorageUrl, downloadAsset } from '../lib/supabaseClient';
 import { useGeneratedContent } from '../hooks/useGeneratedContent';
 import { GeneratedVideo } from '../lib/database.types';
 
@@ -78,12 +78,7 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
     };
 
     const handleDownload = () => {
-        const link = document.createElement('a');
-        link.href = videoUri;
-        link.download = `generated-video-${Date.now()}.mp4`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        downloadAsset(videoUri, `generated-video-${Date.now()}.mp4`);
     };
 
     const handlePreview = () => {

@@ -41,6 +41,30 @@ export const normalizeStorageUrl = (url: string): string => {
         return url.replace(supabaseUrl, publicBase);
     }
     // Auto-normalize: http://host:PORT/... → https://host/...
-    return url.replace(/^http:\/\/([^/:]+):\d+(\/.*)?$/, 'https://$1$2');
+    return url.replace(/^http:\/\/([^/:]+):\d+(\/.*)$/, 'https://$1$2');
 };
+
+/**
+ * Downloads a file from a URL (including cross-origin Storage URLs).
+ * Fetches as blob to bypass browser cross-origin download restrictions.
+ */
+export const downloadAsset = async (url: string, filename: string): Promise<void> => {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+        console.error('[downloadAsset] Failed, opening in new tab instead:', err);
+        window.open(url, '_blank');
+    }
+};
+
 
