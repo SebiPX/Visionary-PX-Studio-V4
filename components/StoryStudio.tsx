@@ -150,14 +150,23 @@ export const StoryStudio: React.FC = () => {
 
         setGeneratingAssetId(asset.id);
         try {
+            // Build a descriptive prompt from the asset's fields
+            const typeLabel = asset.type === 'actor' ? 'character/actor' : asset.type === 'environment' ? 'environment/location' : 'product/object';
+            const imagePrompt = `Generate a high-quality ${storyboardStyle} style image of a ${typeLabel} for a storyboard.
+Name: ${asset.name}.
+Description: ${asset.description || `A ${asset.type} asset`}.
+${genre ? `Genre: ${genre}.` : ''}${mood ? ` Mood: ${mood}.` : ''}
+Cinematic, detailed, professional production design.`;
+
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.5-flash-image',
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    contents: [{ role: 'user', parts: [{ text: imagePrompt }] }],
                     config: { imageConfig: { aspectRatio: '1:1' } }
                 }
             });
+
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
