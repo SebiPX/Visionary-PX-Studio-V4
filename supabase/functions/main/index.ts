@@ -1,7 +1,13 @@
 // @ts-nocheck
-// main/index.ts - Required router entrypoint for self-hosted Supabase Edge Runtime
-// Kong API gateway strips '/functions/v1/' before forwarding to the edge runtime,
-// so url.pathname will be just '/gemini-proxy' (not '/functions/v1/gemini-proxy').
+// main/index.ts - Router for self-hosted Supabase Edge Runtime
+// All handlers must live inside main/ so the edge runtime compiles them.
+// Kong strips '/functions/v1/' before forwarding, so pathname is '/gemini-proxy'.
+
+import geminiProxyHandler from './gemini-proxy.ts';
+
+const HANDLERS = {
+  'gemini-proxy': geminiProxyHandler,
+};
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
@@ -15,22 +21,17 @@ Deno.serve(async (req: Request) => {
 
   const fnName = pathParts[0] ?? null;
 
-  if (!fnName) {
-    return new Response(JSON.stringify({ error: 'No function name in path', path: url.pathname }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  if (!fnName || !HANDLERS[fnName]) {
+    return new Response(
+      JSON.stringify({ error: 'Function not found', path: url.pathname, available: Object.keys(HANDLERS) }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } },
+    );
   }
 
   try {
-    const module = await import(`./${fnName}/index.ts`);
-    const handler = module.default ?? module.handler;
-    if (typeof handler !== 'function') {
-      throw new Error(`Function "${fnName}" does not export a default handler`);
-    }
-    return handler(req);
+    return await HANDLERS[fnName](req);
   } catch (e) {
-    console.error(`[main] Error routing to "${fnName}":`, e);
+    console.error(`[main] Error in "${fnName}":`, e);
     return new Response(JSON.stringify({ error: e.message, function: fnName }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

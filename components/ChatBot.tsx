@@ -12,13 +12,14 @@ async function embedText(text: string): Promise<number[]> {
   const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
     body: {
       action: 'embedContent',
-      model: `text-embedding-004`,
+      model: EMBED_MODEL,
       contents: text
     }
   });
 
   if (error || response?.error) {
-    throw new Error(`Embed API error: ${error?.message || response?.error}`);
+    const errMsg = error?.message || JSON.stringify(response?.error);
+    throw new Error(`Embed API error: ${errMsg}`);
   }
 
   return response.embedding.values as number[];
@@ -200,9 +201,7 @@ export const ChatBot: React.FC = () => {
           action: 'generateContent',
           model: 'gemini-3-flash-preview',
           contents: contents,
-          config: {
-            systemInstruction: activePersona.instruction
-          }
+          systemInstruction: activePersona.instruction,
         }
       });
 

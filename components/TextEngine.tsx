@@ -17,6 +17,7 @@ export const TextEngine: React.FC = () => {
     const [topic, setTopic] = useState('');
     const [audience, setAudience] = useState('');
     const [tone, setTone] = useState('Professional');
+    const [language, setLanguage] = useState('Deutsch');
     const [isGenerating, setIsGenerating] = useState(false);
     const [content, setContent] = useState(`In the rapidly evolving landscape of the digital era, the concept of "ownership" has often felt ethereal. For decades, digital artists and creators have struggled with the paradox of infinite reproducibility. However, the emergence of Web3 technologies is fundamentally shifting this paradigm.`);
     const [history, setHistory] = useState<GeneratedText[]>([]);
@@ -59,7 +60,7 @@ export const TextEngine: React.FC = () => {
 
             let prompt = "";
             if (isContinuation) {
-                prompt = `Continue the following text, keeping the same style and context. The text is for a ${activePlatform} post about "${topic || 'Web3 and Digital Ownership'}". \n\nExisting text:\n${content}\n\nIMPORTANT: Only output the continuation text. Do not include any introductions, explanations, or meta-commentary.`;
+                prompt = `Continue the following text, keeping the same style and context. The text is for a ${activePlatform} post about "${topic || 'Web3 and Digital Ownership'}". \n\nExisting text:\n${content}\n\nIMPORTANT: Only output the continuation text. Do not include any introductions, explanations, or meta-commentary. IMPORTANT: Write the entire output in ${language}.`;
             } else {
                 const platformInstructions: Record<string, string> = {
                     'Blog Post': 'Write a comprehensive blog post with proper headings, paragraphs, and a conclusion. Include SEO-optimized content.',
@@ -68,12 +69,11 @@ export const TextEngine: React.FC = () => {
                     'LinkedIn': 'Write a professional LinkedIn post. Use a business tone, include insights, and end with a thought-provoking question or call-to-action.'
                 };
 
-                prompt = `${platformInstructions[activePlatform]}\n\nTopic: "${topic || 'The impact of Web3 on digital art'}"\nTarget Audience: ${audience || 'Creative Professionals'}\nTone: ${tone}\n\n${useTrends ? 'IMPORTANT: Research the latest trends, news, and current information about this topic using Google Search. Incorporate recent developments and data into your content.\n\n' : ''}IMPORTANT: Output ONLY the ${activePlatform} content. Do not include any introductions like "Here is..." or explanations. Start directly with the content.`;
+                prompt = `${platformInstructions[activePlatform]}\n\nTopic: "${topic || 'The impact of Web3 on digital art'}"\nTarget Audience: ${audience || 'Creative Professionals'}\nTone: ${tone}\n\n${useTrends ? 'IMPORTANT: Research the latest trends, news, and current information about this topic using Google Search. Incorporate recent developments and data into your content.\n\n' : ''}IMPORTANT: Output ONLY the ${activePlatform} content. Do not include any introductions like "Here is..." or explanations. Start directly with the content. IMPORTANT: Write the entire output in ${language}.`;
             }
 
-            const config: any = {
-                systemInstruction: "You are an expert content creator specializing in tech and creative industries.",
-            };
+            const config: any = {};
+            const systemInstruction = "You are an expert content creator specializing in tech and creative industries.";
 
             // Enable Google Search grounding if trends are enabled
             if (useTrends && !isContinuation) {
@@ -85,9 +85,10 @@ export const TextEngine: React.FC = () => {
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
-                    model: 'gemini-3-pro-preview',
-                    contents: prompt,
-                    config: config
+                    model: 'gemini-3-flash-preview',
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    systemInstruction,
+                    ...(Object.keys(config).length > 0 ? { config } : {})
                 }
             });
 
@@ -96,8 +97,9 @@ export const TextEngine: React.FC = () => {
                 throw new Error(response?.error || error?.message);
             }
 
-            if (response.text) {
-                let finalContent = isContinuation ? content + "\n\n" + response.text : response.text;
+            const generatedText = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (generatedText) {
+                let finalContent = isContinuation ? content + "\n\n" + generatedText : generatedText;
                 setContent(finalContent);
                 if (!isContinuation) {
                     addToHistory(finalContent);
@@ -129,11 +131,10 @@ export const TextEngine: React.FC = () => {
                     'LinkedIn': 'Write a professional LinkedIn post. Use a business tone, include insights, and end with a thought-provoking question or call-to-action.'
                 };
 
-                const prompt = `${platformInstructions[platform]}\n\nTopic: "${topic || 'The impact of Web3 on digital art'}"\nTarget Audience: ${audience || 'Creative Professionals'}\nTone: ${tone}\n\n${useTrends ? 'IMPORTANT: Research the latest trends, news, and current information about this topic using Google Search. Incorporate recent developments and data into your content.\n\n' : ''}IMPORTANT: Output ONLY the ${platform} content. Do not include any introductions like "Here is..." or explanations. Start directly with the content.`;
+                const prompt = `${platformInstructions[platform]}\n\nTopic: "${topic || 'The impact of Web3 on digital art'}"\nTarget Audience: ${audience || 'Creative Professionals'}\nTone: ${tone}\n\n${useTrends ? 'IMPORTANT: Research the latest trends, news, and current information about this topic using Google Search. Incorporate recent developments and data into your content.\n\n' : ''}IMPORTANT: Output ONLY the ${platform} content. Do not include any introductions like "Here is..." or explanations. Start directly with the content. IMPORTANT: Write the entire output in ${language}.`;
 
-                const config: any = {
-                    systemInstruction: "You are an expert content creator specializing in tech and creative industries.",
-                };
+                const config: any = {};
+                const sysInstruction = "You are an expert content creator specializing in tech and creative industries.";
 
                 // Enable Google Search grounding if trends are enabled
                 if (useTrends) {
@@ -145,9 +146,10 @@ export const TextEngine: React.FC = () => {
                 const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                     body: {
                         action: 'generateContent',
-                        model: 'gemini-3-pro-preview',
-                        contents: prompt,
-                        config: config
+                        model: 'gemini-3-flash-preview',
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                        systemInstruction: sysInstruction,
+                        ...(Object.keys(config).length > 0 ? { config } : {})
                     }
                 });
 
@@ -156,11 +158,12 @@ export const TextEngine: React.FC = () => {
                     throw new Error(response?.error || error?.message);
                 }
 
-                if (response.text) {
-                    results[platform] = response.text;
+                const generatedText = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (generatedText) {
+                    results[platform] = generatedText;
                     // Save each platform's content
                     await saveText({
-                        content: response.text,
+                        content: generatedText,
                         topic: topic || 'Untitled Generation',
                         platform: platform,
                         audience: audience || null,
@@ -250,6 +253,22 @@ export const TextEngine: React.FC = () => {
                                 <option>Casual</option>
                                 <option>Funny</option>
                                 <option>Inspirational</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sprache / Language</label>
+                            <select
+                                value={language}
+                                onChange={(e) => setLanguage(e.target.value)}
+                                className="w-full bg-[#0a0f18] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:ring-1 focus:ring-primary outline-none appearance-none"
+                            >
+                                <option value="Deutsch">🇩🇪 Deutsch</option>
+                                <option value="English">🇬🇧 English</option>
+                                <option value="Français">🇫🇷 Français</option>
+                                <option value="Español">🇪🇸 Español</option>
+                                <option value="Italiano">🇮🇹 Italiano</option>
+                                <option value="Português">🇵🇹 Português</option>
+                                <option value="Türkçe">🇹🇷 Türkçe</option>
                             </select>
                         </div>
 
