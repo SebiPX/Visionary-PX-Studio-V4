@@ -36,7 +36,7 @@ export function Sidebar({ profile, isAdmin, onSignOut }: SidebarProps) {
             <Package size={18} className="text-white" />
           </div>
           <div>
-            <p className="font-bold text-white text-sm leading-tight">PX Inventar</p>
+            <p className="font-bold text-white text-sm leading-tight">PX INTERN</p>
             <p className="text-xs text-slate-400">Management</p>
           </div>
         </div>

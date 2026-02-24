@@ -4,9 +4,9 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-**Eine hochmoderne KI-Content-Creation-Suite mit integrierter Geräteverwaltung**
+**Eine hochmoderne KI-Content-Creation-Suite mit integriertem internen Teamportal**
 
-Visionary PX Studio vereint Google's leistungsstärkste KI-Modelle (Gemini & Veo) in einer futuristischen Glassmorphism-Benutzeroberfläche – plus ein vollständiges internes Inventar-Managementsystem. Erstellen Sie Bilder, Videos, Texte, Geschichten und Thumbnails, und verwalten Sie gleichzeitig Geräte, Verleih, Logins und mehr.
+Visionary PX Studio vereint Google's leistungsstärkste KI-Modelle (Gemini & Veo) in einer futuristischen Glassmorphism-Benutzeroberfläche – plus ein vollständiges internes Portal (PX INTERN) mit Inventar, Verleih, Logins, Firmendaten und konfigurierbarem Dashboard.
 
 ---
 
@@ -120,25 +120,26 @@ Visionary PX Studio vereint Google's leistungsstärkste KI-Modelle (Gemini & Veo
 
 ---
 
-## 📦 PX Inventar (Integriertes Modul)
+## 📦 PX INTERN (Integriertes Modul)
 
-Vollständiges internes Geräte- und Ressourcenmanagementsystem, zugänglich direkt über das Dashboard.
+Vollständiges internes Teamportal, zugänglich direkt über das Dashboard → "PX INTERN".
 
 ### Module
 
+- **🏠 Dashboard** — Konfigurierbar pro User: Interne Links, Kalender-Widget, Ausleihen-Widget, Inventar-Stats, angeheftete Logins
 - **📋 Inventar** — Geräteverwaltung mit Status, Fotos, Filtern & CSV-Export
 - **🔄 Verleih** — Ausleihe-Tracking mit Rückgabe & Archiv
 - **📄 Verleih-Formular** — Neues Verleihschein erstellen mit PDF-Export
 - **📅 Kalender** — Monatsansicht aller aktiven Ausleihen
-- **🔑 Logins** — Zugangsdaten-Verwaltung (Admin-only: hinzufügen/bearbeiten)
+- **🔑 Logins** — Zugangsdaten-Verwaltung; Logins können im Dashboard angeheftet werden
 - **📱 Handyverträge** — Mobilfunkvertrag-Übersicht
 - **💳 Kreditkarten** — Kreditkarten-Verwaltung
 - **🏢 Firmendaten** — Bankverbindung & Handelsregisterdaten
-- **🔗 Interne Links** — Teamlinks mit Kategorien, **Google Favicon CDN** & farbiger Buchstaben-Avatar Fallback
+- **🔗 Interne Links** — Teamlinks mit Kategorien, Google Favicon CDN & Buchstaben-Avatar Fallback
 
 ### Rollen
 
-- **User** — Lesen & eigene Daten verwalten
+- **User** — Lesen & eigene Daten verwalten; eigene Dashboard-Konfiguration
 - **Admin** — Voller Zugriff auf alle Module inkl. Bearbeiten & Löschen
 
 ---
@@ -166,11 +167,12 @@ Siehe [SUPABASE_INTEGRATION.md](./SUPABASE_INTEGRATION.md) für Details.
 - `generated_videos` — Videogenerierungen
 - `generated_thumbnails` — Thumbnails
 - `generated_texts` — Texte
-- `generated_sketches` — Sketch-to-Image (Bild in Supabase Storage, URL in DB)
+- `generated_videos` — Videogenerierungen (Veo → Upload zu `generated_assets` Storage → permanente URL)
+- `generated_sketches` — Sketch-to-Image (Upload zu `generated_assets/sketches/` → URL in DB)
 - `onboarding_embeddings` — Vektordatenbank für RAG-Chatbot (pgvector, 768-dim)
 - `stories` — Story Studio Projekte
 
-### Inventar Tabellen
+### PX INTERN Tabellen
 
 - `inventar_items` — Geräte & Assets
 - `inventar_loans` — Ausleihen
@@ -180,6 +182,7 @@ Siehe [SUPABASE_INTEGRATION.md](./SUPABASE_INTEGRATION.md) für Details.
 - `inventar_kreditkarten` — Kreditkarten
 - `inventar_firmendaten` — Firmendaten
 - `inventar_links` — Interne Teamlinks
+- `inventar_dashboard_config` — Per-User Dashboard-Konfiguration (JSONB, RLS: user-scoped)
 
 ---
 

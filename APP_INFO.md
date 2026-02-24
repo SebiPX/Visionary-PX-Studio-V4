@@ -63,7 +63,7 @@ Verwandeln Sie einfache Skizzen in fotorealistische Bilder mit KI.
 
 - **Features:** Interaktives Canvas, Undo/Redo, Context/Stil-Auswahl, Aspect Ratio, Bild-Editing mit Text, Fullscreen-Preview
 - **Modell:** `gemini-2.5-flash-image`
-- **Persistenz:** Generiertes Bild wird zu Supabase Storage (`sketches` Bucket) hochgeladen; nur die URL wird in `generated_sketches` gespeichert (verhindert Payload-Limits)
+- **Persistenz:** Generiertes Bild wird zu Supabase Storage (`generated_assets/sketches/`) hochgeladen; nur die permanente öffentliche URL wird in `generated_sketches` gespeichert (verhindert Payload-Limits durch base64 in DB)
 
 ### 8. 💬 Chat Bot
 
@@ -81,35 +81,44 @@ Ein vielseitiger KI-Assistent mit verschiedenen Persönlichkeiten und RAG-Wissen
 
 ---
 
-## 📦 PX Inventar (Integriertes Modul)
+## 📦 PX INTERN (Integriertes Modul)
 
-Vollständiges internes Geräte- und Ressourcenmanagementsystem. Zugänglich über das Dashboard → "PX Inventar". Das Modul läuft als eigenständige React-App mit isoliertem Routing (MemoryRouter), teilt sich aber Authentication und Supabase-Client mit dem Studio.
+Vollständiges internes Teamportal. Zugänglich über das Dashboard → "PX INTERN". Das Modul läuft als eigenständige React-App mit isoliertem Routing (MemoryRouter), teilt sich aber Authentication und Supabase-Client mit dem Studio.
 
 ### Module & Seiten
 
-| Seite                | Beschreibung                                                               | Rollen                 |
-| -------------------- | -------------------------------------------------------------------------- | ---------------------- |
-| **Dashboard**        | Übersicht: Geräte-Stats, aktive Ausleihen                                  | Alle                   |
-| **Inventar**         | Gerätliste mit Filtern, Suche, Status, Fotos, CSV-Export                   | Alle / Admin: CRUD     |
-| **Verleih**          | Aktive & archivierte Ausleihen mit Rückgabe-Funktion                       | Alle / Admin: Aktionen |
-| **Verleih-Formular** | Neuen Verleihschein erstellen, Kostenberechnung, PDF                       | Alle                   |
-| **Kalender**         | Monatsansicht aller aktiven Ausleihen                                      | Alle                   |
-| **Logins**           | Zugangsdaten (z.B. Software-Accounts)                                      | Alle / Admin: CRUD     |
-| **Handyverträge**    | Mobilfunkvertrag-Übersicht                                                 | Admin only             |
-| **Kreditkarten**     | Kreditkarten-Verwaltung                                                    | Admin only             |
-| **Firmendaten**      | Bankverbindung & Handelsregisterdaten                                      | Admin only             |
-| **Interne Links**    | Team-Links mit Kategorien, Google Favicon CDN & Buchstaben-Avatar Fallback | Alle / Admin: CRUD     |
+| Seite                | Beschreibung                                                                                                                                                                      | Rollen                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| **Dashboard**        | **Konfigurierbar pro User** — Interne Links, kommende Ausleihen (14 Tage), aktive Ausleihen, Inventar-Stats, angeheftete Logins. ⚙ "Anpassen"-Button öffnet Konfigurationsdrawer. | Alle                   |
+| **Inventar**         | Gerätliste mit Filtern, Suche, Status, Fotos, CSV-Export                                                                                                                          | Alle / Admin: CRUD     |
+| **Verleih**          | Aktive & archivierte Ausleihen mit Rückgabe-Funktion                                                                                                                              | Alle / Admin: Aktionen |
+| **Verleih-Formular** | Neuen Verleihschein erstellen, Kostenberechnung, PDF                                                                                                                              | Alle                   |
+| **Kalender**         | Monatsansicht aller aktiven Ausleihen                                                                                                                                             | Alle                   |
+| **Logins**           | Zugangsdaten (z.B. Software-Accounts); einzelne Logins können im Dashboard angeheftet werden                                                                                      | Alle / Admin: CRUD     |
+| **Handyverträge**    | Mobilfunkvertrag-Übersicht                                                                                                                                                        | Admin only             |
+| **Kreditkarten**     | Kreditkarten-Verwaltung                                                                                                                                                           | Admin only             |
+| **Firmendaten**      | Bankverbindung & Handelsregisterdaten                                                                                                                                             | Admin only             |
+| **Interne Links**    | Team-Links mit Kategorien, Google Favicon CDN & Buchstaben-Avatar Fallback                                                                                                        | Alle / Admin: CRUD     |
+
+### Dashboard-Konfiguration (pro User)
+
+Jeder User kann über den ⚙ **"Anpassen"** Button sein Dashboard individuell einstellen:
+
+- **Widgets ein-/ausschalten:** Interne Links, Kommende Ausleihen, Aktive Ausleihen, Inventar-Stats
+- **Link-Kategorien filtern:** Nur bestimmte Kategorien auf dem Dashboard anzeigen
+- **Logins anpinnen:** Ausgewählte Logins erscheinen als "Meine Logins" Widget ganz oben
+- **Persistenz:** Konfiguration wird in `inventar_dashboard_config` (Supabase, user-scoped RLS) gespeichert
 
 ### Rollen-System
 
-- **user** — Standard-Lesezugriff, eigene Aktionen
+- **user** — Standard-Lesezugriff, eigene Aktionen, eigene Dashboard-Konfiguration
 - **admin** — Vollzugriff auf alle Module (definiert via `profiles.role`)
 
 ### Navigation
 
-- Zugang über **Dashboard → "PX Inventar"** Karte
+- Zugang über **Dashboard → "PX INTERN"** Karte
 - **"Zurück zum Studio"** Button jederzeit sichtbar (oben rechts)
-- Eigene Sidebar-Navigation innerhalb des Inventar-Moduls
+- Eigene Sidebar-Navigation innerhalb des Moduls
 
 ---
 
@@ -135,8 +144,9 @@ Vollständiges internes Geräte- und Ressourcenmanagementsystem. Zugänglich üb
 - `stories` — Story Studio Projekte
 - `onboarding_embeddings` — RAG-Vektordatenbank (pgvector 768-dim, `gemini-embedding-001`)
 
-#### PX Inventar
+#### PX INTERN
 
+- `inventar_dashboard_config` — Per-User Dashboard-Konfiguration (JSONB, RLS user-scoped)
 - `inventar_items` — Geräte & Assets
 - `inventar_loans` — Einfache Ausleihen
 - `inventar_verleihscheine` — Verleihscheine (Header)

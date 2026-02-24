@@ -58,7 +58,7 @@ export const SketchStudio: React.FC = () => {
 
             // Upload generated image to Supabase Storage
             // (storing raw base64 in the DB would exceed the request payload limit)
-            let imageUrl = result; // fallback to data-URL if upload fails
+            let imageUrl = ''; // start empty — do NOT fall back to base64 silently
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
@@ -69,23 +69,26 @@ export const SketchStudio: React.FC = () => {
                         byteArray[i] = byteCharacters.charCodeAt(i);
                     }
                     const blob = new Blob([byteArray], { type: 'image/png' });
-                    const fileName = `${user.id}/${Date.now()}.png`;
+                    const fileName = `sketches/${user.id}/${Date.now()}.png`;
 
                     const { error: uploadError } = await supabase.storage
-                        .from('sketches')
+                        .from('generated_assets')
                         .upload(fileName, blob, { contentType: 'image/png', upsert: false });
 
                     if (!uploadError) {
                         const { data: urlData } = supabase.storage
-                            .from('sketches')
+                            .from('generated_assets')
                             .getPublicUrl(fileName);
                         imageUrl = urlData.publicUrl;
+                        console.log('[SketchStudio] Uploaded to Storage:', imageUrl);
                     } else {
-                        console.warn('[SketchStudio] Storage upload failed, saving data-URL:', uploadError.message);
+                        console.error('[SketchStudio] Storage upload failed:', uploadError.message);
+                        imageUrl = result; // explicit fallback on upload error
                     }
                 }
             } catch (uploadErr) {
-                console.warn('[SketchStudio] Storage upload error:', uploadErr);
+                console.error('[SketchStudio] Storage upload error:', uploadErr);
+                imageUrl = result; // explicit fallback on unexpected error
             }
 
             // Save to database (only permanent URL, not the raw base64 sketch)

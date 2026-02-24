@@ -12,6 +12,7 @@ import { useHandyvertraege } from './Inventar/hooks/useHandyvertraege'
 import { useKreditkarten } from './Inventar/hooks/useKreditkarten'
 import { useFirmendaten } from './Inventar/hooks/useFirmendaten'
 import { useLinks } from './Inventar/hooks/useLinks'
+import { useDashboardConfig } from './Inventar/hooks/useDashboardConfig'
 
 import { Sidebar } from './Inventar/components/Layout/Sidebar'
 import { DashboardPage } from './Inventar/pages/DashboardPage'
@@ -58,6 +59,7 @@ function InventarShell({ onBack }: InventarAppProps) {
   const { kreditkarten, createKreditkarte, updateKreditkarte, deleteKreditkarte } = useKreditkarten()
   const { firmendaten, createEintrag, updateEintrag, deleteEintrag } = useFirmendaten()
   const { links, createLink, updateLink, deleteLink } = useLinks()
+  const { config: dashboardConfig, saving: dashboardConfigSaving, save: saveDashboardConfig } = useDashboardConfig()
   const [selectedItem, setSelectedItem] = useState<InventarItem | null>(null)
 
   if (!profile) {
@@ -132,7 +134,16 @@ function InventarShell({ onBack }: InventarAppProps) {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             <Route path="/dashboard" element={
-              <DashboardPage items={items} loans={loans} />
+              <DashboardPage
+                items={items}
+                loans={loans}
+                links={links}
+                scheine={scheine}
+                logins={logins}
+                config={dashboardConfig}
+                onConfigSave={saveDashboardConfig}
+                configSaving={dashboardConfigSaving}
+              />
             } />
 
             <Route path="/inventar" element={

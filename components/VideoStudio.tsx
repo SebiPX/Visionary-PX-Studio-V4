@@ -90,19 +90,49 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({ selectedItemId, onItem
         setShowPreview(true);
     };
 
-    const addToHistory = async (url: string, usedPrompt: string) => {
-        // Save to database
-        await saveVideo({
-            prompt: usedPrompt,
-            model: 'veo-3.1-fast-generate-preview',
-            video_url: url,
-            config: {
-                aspectRatio,
-                duration,
-                cameraMotion,
-                mode: activeMode,
-            },
-        });
+    const addToHistory = async (geminiUrl: string, usedPrompt: string) => {
+        try {
+            // 1. Download the video from Gemini as a blob
+            const response = await fetch(geminiUrl);
+            if (!response.ok) throw new Error('Failed to fetch video from Gemini');
+            const blob = await response.blob();
+
+            // 2. Upload blob to Supabase Storage
+            const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.mp4`;
+            const filePath = `videos/${fileName}`;
+            const { supabase: supabaseClient } = await import('../lib/supabaseClient');
+            const { error: uploadError } = await supabaseClient.storage
+                .from('generated_assets')
+                .upload(filePath, blob, { contentType: 'video/mp4', upsert: false });
+
+            if (uploadError) throw uploadError;
+
+            // 3. Get the public URL
+            const { data: urlData } = supabaseClient.storage
+                .from('generated_assets')
+                .getPublicUrl(filePath);
+            const permanentUrl = urlData.publicUrl;
+
+            // 4. Save permanent URL to DB
+            await saveVideo({
+                prompt: usedPrompt,
+                model: 'veo-3.1-fast-generate-preview',
+                video_url: permanentUrl,
+                config: { aspectRatio, duration, cameraMotion, mode: activeMode },
+            });
+
+            // 5. Update player to use permanent URL
+            setVideoUri(permanentUrl);
+        } catch (err) {
+            console.error('Video upload to Storage failed, saving Gemini URL as fallback:', err);
+            // Fallback: save whatever URL we have
+            await saveVideo({
+                prompt: usedPrompt,
+                model: 'veo-3.1-fast-generate-preview',
+                video_url: geminiUrl,
+                config: { aspectRatio, duration, cameraMotion, mode: activeMode },
+            });
+        }
 
         // Reload history
         loadVideoHistory();

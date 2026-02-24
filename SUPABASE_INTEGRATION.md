@@ -172,7 +172,7 @@ $$;
 
 ---
 
-### PX Inventar Tables
+### PX INTERN Tables
 
 #### `inventar_items`
 
@@ -307,6 +307,32 @@ sort_order   integer default 0
 created_at / updated_at
 ```
 
+#### `inventar_dashboard_config` (NEU)
+
+Per-User Dashboard-Konfiguration. Jeder User kann Widgets, Link-Kategorien und angeheftete Logins individuell einstellen.
+
+```sql
+id         uuid (PK, default gen_random_uuid())
+user_id    uuid references auth.users(id) on delete cascade
+config     jsonb not null default '{}'
+created_at timestamptz
+updated_at timestamptz
+CONSTRAINT inventar_dashboard_config_user_id_key UNIQUE (user_id)
+```
+
+**Config JSON Shape:**
+
+```json
+{
+  "show_links": true,
+  "link_categories": null,
+  "show_calendar": true,
+  "show_loans": true,
+  "show_inventory_stats": true,
+  "pinned_login_ids": []
+}
+```
+
 ---
 
 ## 🔒 Security
@@ -354,6 +380,13 @@ CREATE POLICY "Admins können Links verwalten" ON inventar_links
       WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
     )
   );
+
+-- Dashboard-Config: User-scoped (jeder liest/schreibt nur eigene)
+create policy "user owns config"
+  on inventar_dashboard_config
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 ```
 
 ### Storage Security
@@ -424,7 +457,7 @@ Admins sehen im Inventar zusätzlich:
 - ✅ Profilverwaltung mit Avatar-Upload
 - ✅ Passwort-Reset
 
-**PX Inventar:**
+**PX INTERN:**
 
 - ✅ Geräteverwaltung mit Fotos & CSV-Export
 - ✅ Verleih-System mit PDF-Erstellung
@@ -432,6 +465,8 @@ Admins sehen im Inventar zusätzlich:
 - ✅ Logins, Handyverträge, Kreditkarten, Firmendaten
 - ✅ Interne Links mit Kategorien & Favicon-Vorschau
 - ✅ Rollen-basierte Zugangskontrolle
+- ✅ **Konfigurierbares Dashboard pro User** (Widgets, Link-Kategorien, angeheftete Logins)
+- ✅ **Video & Sketch** werden zu `generated_assets` Supabase Storage hochgeladen (permanente URLs)
 
 ---
 
