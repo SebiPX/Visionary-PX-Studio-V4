@@ -140,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setView, navigateToItem })
                             </div>
                             <div className="relative min-w-0">
                                 <p className="font-semibold text-white text-sm leading-tight">PX INTERN</p>
-                                <p className="text-xs text-slate-400 mt-0.5 truncate">Geräteverwaltung</p>
+                                <p className="text-xs text-slate-400 mt-0.5 truncate">Links · Inventar · Logins</p>
                             </div>
                         </button>
                     </div>
