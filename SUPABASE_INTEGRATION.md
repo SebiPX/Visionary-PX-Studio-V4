@@ -470,6 +470,67 @@ Admins sehen im Inventar zusätzlich:
 
 ---
 
+## ⚡ Edge Functions — Self-Hosted Deployment
+
+> [!IMPORTANT]
+> `supabase functions deploy` funktioniert **NICHT** für self-hosted Supabase. Die einzige korrekte Methode ist der direkte Dateitransfer auf den VPS.
+
+### Wo die Edge Functions liegen
+
+Im Projekt: `supabase/functions/main/` (z.B. `gemini-proxy.ts`)
+
+Auf dem VPS Server läuft Deno innerhalb eines Docker Containers. Der Pfad auf dem Server (typisch):
+
+```
+~/supabase/docker/volumes/functions/main/
+```
+
+### Deployment-Prozess (nach Code-Änderungen)
+
+```bash
+# 1. Datei auf Server kopieren (SCP oder SFTP)
+scp supabase/functions/main/gemini-proxy.ts user@vserver:~/supabase/docker/volumes/functions/main/
+
+# 2. Deno Cache im Container löschen (WICHTIG nach Codeänderungen!)
+docker exec supabase-edge-runtime sh -c "rm -rf /tmp/deno_cache/*"
+
+# 3. Container neustarten
+docker restart supabase-edge-runtime
+
+# 4. Status prüfen
+docker logs supabase-edge-runtime --tail=20
+```
+
+> [!WARNING]
+> Ohne Schritt 2 (Cache löschen) wird Deno die alte kompilierte Version weiter ausführen — neue Änderungen werden ignoriert.
+
+### Edge Function: `gemini-proxy`
+
+Routing-Logik in `gemini-proxy.ts`:
+
+| `action`          | Was passiert                             |
+| ----------------- | ---------------------------------------- |
+| `generateContent` | Text oder Bild generieren via Gemini API |
+| `generateImage`   | Imagen 3 (dedizierter Image-Endpoint)    |
+| `veoGenerate`     | Video-Generierung via Veo API            |
+| `veoStatus`       | Polling für Veo-Video-Status             |
+| `embedContent`    | RAG-Embedding via Gemini Embedding       |
+
+### Modell-Kompatibilität mit Google Search Tools
+
+Die `{ googleSearch: {} }` Tool-Syntax funktioniert **nur** mit bestimmten Modellen:
+
+| Modell                   | `{ googleSearch: {} }` | Notizen                                                |
+| ------------------------ | ---------------------- | ------------------------------------------------------ |
+| `gemini-3-flash-preview` | ✅                     | Standard-Modell, funktioniert                          |
+| `gemini-2.0-flash`       | ✅                     | Stabil                                                 |
+| `gemini-1.5-pro`         | ❌                     | Nutzt anderes Format (`google_search_retrieval`) → 404 |
+| `gemini-2.0-flash-exp`   | ❌                     | Deprecated → 404                                       |
+
+**Faustregel:** Immer `gemini-3-flash-preview` für Text + Search verwenden; `gemini-2.5-flash-image` für Bildgenerierung.
+
+---
+
 ## 📚 Weitere Ressourcen
 
 - [APP_INFO.md](./APP_INFO.md) — Vollständige Feature-Dokumentation
