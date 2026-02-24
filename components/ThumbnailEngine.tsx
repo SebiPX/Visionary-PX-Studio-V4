@@ -142,17 +142,18 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
                 body: {
                     action: 'generateContent',
                     model: 'gemini-3-flash-preview',
-                    contents: `Write a very short, catchy, 2-3 word thumbnail text overlay for a video about: "${videoTopic}". RETURN ONLY THE TEXT. No quotes.`
+                    contents: [{ role: 'user', parts: [{ text: `Write a very short, catchy, 2-3 word thumbnail text overlay for a video about: "${videoTopic}". RETURN ONLY THE TEXT. No quotes.` }] }]
                 }
             });
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
-            if (response.text) {
-                setTextContent(response.text.trim());
+            const textResult = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (textResult) {
+                setTextContent(textResult.trim());
             }
         } catch (e) {
             console.error(e);
@@ -177,17 +178,18 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
                 body: {
                     action: 'generateContent',
                     model: 'gemini-3-flash-preview',
-                    contents: promptText
+                    contents: [{ role: 'user', parts: [{ text: promptText }] }]
                 }
             });
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
-            if (response.text) {
-                if (type === 'BACKGROUND') setBgPrompt(response.text.trim());
-                else setElementPrompt(response.text.trim());
+            const visualResult = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (visualResult) {
+                if (type === 'BACKGROUND') setBgPrompt(visualResult.trim());
+                else setElementPrompt(visualResult.trim());
             }
         } catch (e) {
             console.error(e);
@@ -258,7 +260,7 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
             const respParts = response.candidates?.[0]?.content?.parts;

@@ -154,14 +154,14 @@ export const StoryStudio: React.FC = () => {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.5-flash-image',
-                    contents: { parts: [{ text: prompt }] },
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
                     config: { imageConfig: { aspectRatio: '1:1' } }
                 }
             });
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
             const respParts = response.candidates?.[0]?.content?.parts;
@@ -235,13 +235,13 @@ export const StoryStudio: React.FC = () => {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.0-flash',
-                    contents: { parts: [{ text: prompt }] }
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }]
                 }
             });
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
             const generatedStory = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -267,13 +267,13 @@ export const StoryStudio: React.FC = () => {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.0-flash',
-                    contents: { parts: [{ text: prompt }] }
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }]
                 }
             });
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
             const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -426,7 +426,7 @@ ${parts.length > 0 ? 'Use the reference image(s) for character/environment consi
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
             // Parse response

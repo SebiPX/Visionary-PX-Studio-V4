@@ -126,7 +126,7 @@ export const ImageGen: React.FC<ImageGenProps> = ({ selectedItemId, onItemLoaded
 
             if (error || response?.error) {
                 console.error("Gemini API Error:", error || response?.error);
-                throw new Error(response?.error || error?.message);
+                throw new Error(error?.message || JSON.stringify(response?.error));
             }
 
             // Parse response to find image part
