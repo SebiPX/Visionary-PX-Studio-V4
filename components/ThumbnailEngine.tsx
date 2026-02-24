@@ -267,9 +267,24 @@ export const ThumbnailEngine: React.FC<ThumbnailEngineProps> = ({ selectedItemId
             if (respParts) {
                 for (const part of respParts) {
                     if (part.inlineData) {
-                        const finalUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                        setGeneratedImage(finalUrl);
-                        addToHistory(finalUrl);
+                        const mimeType = part.inlineData.mimeType || 'image/png';
+                        const ext = mimeType.split('/')[1] || 'png';
+
+                        // Convert base64 → Blob → upload to Supabase Storage
+                        const dataUri = `data:${mimeType};base64,${part.inlineData.data}`;
+                        const imageBlob = await (await fetch(dataUri)).blob();
+                        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}.${ext}`;
+                        const { error: uploadError } = await supabase.storage
+                            .from('generated_assets')
+                            .upload(`thumbnails/${fileName}`, imageBlob, { contentType: mimeType });
+                        if (uploadError) throw uploadError;
+
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('generated_assets')
+                            .getPublicUrl(`thumbnails/${fileName}`);
+
+                        setGeneratedImage(publicUrl);
+                        addToHistory(publicUrl);
                         break;
                     }
                 }

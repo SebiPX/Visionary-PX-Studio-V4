@@ -134,20 +134,29 @@ export const ImageGen: React.FC<ImageGenProps> = ({ selectedItemId, onItemLoaded
             if (respParts) {
                 for (const part of respParts) {
                     if (part.inlineData) {
-                        const base64Data = part.inlineData.data;
                         const mimeType = part.inlineData.mimeType || 'image/png';
-                        const newImageUrl = `data:${mimeType};base64,${base64Data}`;
-                        setCurrentImage(newImageUrl);
+                        const ext = mimeType.split('/')[1] || 'png';
 
-                        // Save to database
+                        // Convert base64 → Blob → upload to Supabase Storage
+                        const dataUri = `data:${mimeType};base64,${part.inlineData.data}`;
+                        const imageBlob = await (await fetch(dataUri)).blob();
+                        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}.${ext}`;
+                        const { error: uploadError } = await supabase.storage
+                            .from('generated_assets')
+                            .upload(`images/${fileName}`, imageBlob, { contentType: mimeType });
+                        if (uploadError) throw uploadError;
+
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('generated_assets')
+                            .getPublicUrl(`images/${fileName}`);
+
+                        setCurrentImage(publicUrl);
                         await saveImage({
                             prompt: prompt,
                             style: activeMode,
-                            image_url: newImageUrl,
+                            image_url: publicUrl,
                             config: { aspectRatio, mode: activeMode }
                         });
-
-                        // Reload history to show new item
                         await loadImageHistory();
                         break;
                     }
