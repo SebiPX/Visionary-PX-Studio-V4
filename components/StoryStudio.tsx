@@ -144,25 +144,52 @@ export const StoryStudio: React.FC = () => {
         }
     };
 
-    // Generate image with AI
+    // Generate image with AI (supports i2i when asset already has an uploaded image)
     const generateAssetImage = async (asset: StoryAsset): Promise<string | null> => {
         if (!user) return null;
 
         setGeneratingAssetId(asset.id);
         try {
-            // Build a descriptive prompt from the asset's fields
             const typeLabel = asset.type === 'actor' ? 'character/actor' : asset.type === 'environment' ? 'environment/location' : 'product/object';
-            const imagePrompt = `Generate a high-quality ${storyboardStyle} style image of a ${typeLabel} for a storyboard.
-Name: ${asset.name}.
-Description: ${asset.description || `A ${asset.type} asset`}.
+            const hasRefImage = !!asset.image_url;
+
+            const imagePrompt = hasRefImage
+                ? `Refine and reimagine this ${typeLabel} image in ${storyboardStyle} style for a storyboard.
+Keep the same subject/identity but enhance for cinematic quality.
+Name: ${asset.name}. Description: ${asset.description || `A ${asset.type} asset`}.
+${genre ? `Genre: ${genre}.` : ''}${mood ? ` Mood: ${mood}.` : ''}
+Cinematic, detailed, professional production design.`
+                : `Generate a high-quality ${storyboardStyle} style image of a ${typeLabel} for a storyboard.
+Name: ${asset.name}. Description: ${asset.description || `A ${asset.type} asset`}.
 ${genre ? `Genre: ${genre}.` : ''}${mood ? ` Mood: ${mood}.` : ''}
 Cinematic, detailed, professional production design.`;
+
+            // Build parts array — include uploaded image as reference input if available (i2i)
+            const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [];
+            if (hasRefImage) {
+                try {
+                    const fetchUrl = asset.image_url.split('?')[0]; // strip cache-bust timestamp
+                    const imgResponse = await fetch(fetchUrl);
+                    const blob = await imgResponse.blob();
+                    const base64 = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                    parts.push({ inlineData: { mimeType: blob.type || 'image/png', data: base64 } });
+                    console.log('[StoryStudio] i2i: Reference image loaded for', asset.name);
+                } catch (e) {
+                    console.warn('[StoryStudio] i2i: Could not load reference image, falling back to text-only:', e);
+                }
+            }
+            parts.push({ text: imagePrompt });
 
             const { data: response, error } = await supabase.functions.invoke('gemini-proxy', {
                 body: {
                     action: 'generateContent',
                     model: 'gemini-2.5-flash-image',
-                    contents: [{ role: 'user', parts: [{ text: imagePrompt }] }],
+                    contents: [{ role: 'user', parts }],
                     config: { imageConfig: { aspectRatio: '1:1' } }
                 }
             });
@@ -654,10 +681,21 @@ ${parts.length > 0 ? 'Use the reference image(s) for character/environment consi
                     <h2 className="text-lg font-bold text-white">Story Studio</h2>
                     <button
                         onClick={() => {
+                            // Reset ALL session state to blank defaults
                             setSessionId(null);
                             setSessionTitle('Untitled Storyboard');
                             setStoryText('');
+                            setGenre('');
+                            setMood('');
+                            setTargetAudience('');
                             setShots([]);
+                            setActors([
+                                { id: '1', type: 'actor', name: 'Actor 1', description: '', image_url: '', source: 'upload', created_at: new Date().toISOString() },
+                                { id: '2', type: 'actor', name: 'Actor 2', description: '', image_url: '', source: 'upload', created_at: new Date().toISOString() },
+                                { id: '3', type: 'actor', name: 'Actor 3', description: '', image_url: '', source: 'upload', created_at: new Date().toISOString() },
+                            ]);
+                            setEnvironment({ id: 'env-1', type: 'environment', name: 'Environment', description: '', image_url: '', source: 'upload', created_at: new Date().toISOString() });
+                            setProduct({ id: 'prod-1', type: 'product', name: 'Product', description: '', image_url: '', source: 'upload', created_at: new Date().toISOString() });
                             setCurrentPhase('setup');
                         }}
                         className="px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-all"
